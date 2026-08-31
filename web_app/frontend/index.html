@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uz-Latn">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#130b21" />
-  <title>Isora-AI — переводчик жестового языка</title>
+  <title>Isora-AI — imo-ishora tili tarjimoni</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,8 +12,8 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="isora-page">
-  <nav class="isora-nav" aria-label="Основная навигация">
-    <a class="isora-brand" href="index.html" aria-label="Isora-AI — главная">
+  <nav class="isora-nav" aria-label="Asosiy navigatsiya">
+    <a class="isora-brand" href="index.html" aria-label="Isora-AI — bosh sahifa">
       <svg class="brand-mark" viewBox="0 0 56 56" aria-hidden="true">
         <path d="M10 7h36a7 7 0 0 1 7 7v23a7 7 0 0 1-7 7H28L16 52v-8h-6a7 7 0 0 1-7-7V14a7 7 0 0 1 7-7Z" fill="currentColor"/>
         <path d="M15 25v7M23 19v19M31 15v27M39 20v17M47 25v7" fill="none" stroke="#130b21" stroke-linecap="round" stroke-width="4"/>
@@ -21,43 +21,43 @@
       <span>isora-ai</span>
     </a>
     <div class="isora-nav-links">
-      <a href="#dialog" class="isora-nav-link active">Диалог</a>
-      <a href="signs.html" class="isora-nav-link">50 жестов</a>
-      <a href="sign_production.html" class="isora-nav-link">Ответ жестами</a>
-      <span class="pilot-badge">Пилотная версия</span>
+      <a href="#dialog" class="isora-nav-link active">Muloqot</a>
+      <a href="signs.html" class="isora-nav-link">50 ta ishora</a>
+      <a href="sign_production.html" class="isora-nav-link">Ishorada javob</a>
+      <span class="pilot-badge">Sinov versiyasi</span>
     </div>
   </nav>
 
   <main class="isora-shell">
     <section class="isora-hero" aria-labelledby="heroTitle">
       <div>
-        <p class="eyebrow">Цифровой переводчик жестового языка</p>
-        <h1 id="heroTitle">Разговор без<br><span>посредников</span></h1>
-        <p class="hero-copy">Покажите жест в камеру — Isora-AI распознает его и выведет перевод. Сотрудник может ответить готовой фразой на жестовом языке.</p>
+        <p class="eyebrow">Imo-ishora tilining raqamli tarjimoni</p>
+        <h1 id="heroTitle">Vositachisiz<br><span>muloqot</span></h1>
+        <p class="hero-copy">Imo-ishorani kameraga ko'rsating — Isora-AI uni taniydi va tarjimasini chiqaradi. Xodim tayyor ibora bilan imo-ishora tilida javob berishi mumkin.</p>
       </div>
       <div class="privacy-note">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.8 8.8 7 10 4.2-1.2 7-5.4 7-10V6l-7-3Zm0 4a3 3 0 0 1 3 3v1h1v6H8v-6h1v-1a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v1h2v-1a1 1 0 0 0-1-1Z" fill="currentColor"/></svg>
-        <div><strong>Видео не сохраняется</strong><span>Обработка кадров происходит только во время разговора</span></div>
+        <div><strong>Video saqlanmaydi</strong><span>Kadrlar faqat muloqot vaqtida qayta ishlanadi</span></div>
       </div>
     </section>
 
-    <section class="journey" aria-label="Как работает Isora-AI">
-      <article><span>01</span><div><strong>Камера видит жест</strong><small>MediaPipe отслеживает движения</small></div></article>
-      <article><span>02</span><div><strong>AI распознаёт</strong><small>Перевод появляется в диалоге</small></div></article>
-      <article><span>03</span><div><strong>Сотрудник отвечает</strong><small>Выбирает понятную фразу</small></div></article>
-      <article><span>04</span><div><strong>Экран показывает жест</strong><small>Ответ собирается из видеожестов</small></div></article>
+    <section class="journey" aria-label="Isora-AI qanday ishlaydi">
+      <article><span>01</span><div><strong>Kamera ishorani ko'radi</strong><small>MediaPipe harakatlarni kuzatadi</small></div></article>
+      <article><span>02</span><div><strong>AI taniydi</strong><small>Tarjima muloqot oynasida ko'rinadi</small></div></article>
+      <article><span>03</span><div><strong>Xodim javob beradi</strong><small>Tushunarli iborani tanlaydi</small></div></article>
+      <article><span>04</span><div><strong>Ekran ishorani ko'rsatadi</strong><small>Javob videoishoralardan yig'iladi</small></div></article>
     </section>
 
     <section class="dialog-section" id="dialog" aria-labelledby="dialogTitle">
       <div class="section-heading">
-        <div><p class="eyebrow">Живой прототип</p><h2 id="dialogTitle">Начните диалог</h2></div>
-        <p>Встаньте по центру кадра и покажите обе руки. Для следующего жеста ненадолго опустите руки.</p>
+        <div><p class="eyebrow">Ishlaydigan prototip</p><h2 id="dialogTitle">Muloqotni boshlang</h2></div>
+        <p>Kadr markazida turing va ikkala qo'lingizni ko'rsating. Keyingi ishora uchun qo'llaringizni qisqa vaqtga tushiring.</p>
       </div>
 
       <div class="dialog-grid">
         <article class="isora-card camera-card">
           <header class="card-head">
-            <div><span class="card-step">1</span><div><h3>Покажите жест</h3><p>Камера распознает движение</p></div></div>
+            <div><span class="card-step">1</span><div><h3>Ishorani ko'rsating</h3><p>Kamera harakatni taniydi</p></div></div>
             <span class="live-badge"><i></i> LIVE</span>
           </header>
           <div class="camera-wrapper" id="cameraWrapper">
@@ -65,69 +65,69 @@
             <canvas id="overlay"></canvas>
             <div class="camera-empty" id="cameraEmpty">
               <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M18 22h28a6 6 0 0 1 6 6v19a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6Zm14 7a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM22 13h20l4 9H18l4-9Z" fill="currentColor"/></svg>
-              <strong>Разрешите доступ к камере</strong>
-              <span>Isora-AI начнёт работу автоматически</span>
+              <strong>Kameraga ruxsat bering</strong>
+              <span>Isora-AI ishni avtomatik boshlaydi</span>
             </div>
             <div class="camera-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
           </div>
           <div class="camera-status" id="statusPill" role="status" aria-live="polite">
             <span class="status-dot connecting" id="statusDot"></span>
-            <span id="statusText">Подключаем распознавание…</span>
+            <span id="statusText">Tanib olish tizimiga ulanmoqda…</span>
             <div class="buffer-track" aria-hidden="true"><div class="buffer-fill" id="bufferBar"></div></div>
           </div>
         </article>
 
         <article class="isora-card translation-card" id="predictionCard">
           <header class="card-head">
-            <div><span class="card-step">2</span><div><h3>Перевод</h3><p>Результат распознавания</p></div></div>
-            <button class="icon-button" id="clearBtn" type="button" aria-label="Очистить историю" title="Очистить историю">
+            <div><span class="card-step">2</span><div><h3>Tarjima</h3><p>Tanib olish natijasi</p></div></div>
+            <button class="icon-button" id="clearBtn" type="button" aria-label="Tarixni tozalash" title="Tarixni tozalash">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>
             </button>
           </header>
           <div class="prediction-idle" id="predictionIdle">
             <div class="sound-orbit"><i></i><i></i><i></i><i></i><i></i></div>
-            <strong>Жду жест</strong>
-            <span>Покажите один из 50 жестов</span>
+            <strong>Ishorani kutyapman</strong>
+            <span>50 ta ishoradan birini ko'rsating</span>
           </div>
           <div class="prediction-result hidden" id="predictionResult">
-            <span class="result-kicker">Распознано</span>
+            <span class="result-kicker">Tanildi</span>
             <strong id="predLabel">—</strong>
-            <div class="confidence-row"><span>Уверенность</span><b id="confPct">0%</b></div>
+            <div class="confidence-row"><span>Ishonchlilik</span><b id="confPct">0%</b></div>
             <div class="confidence-track"><div id="confBar"></div></div>
-            <a id="viewSignLink" class="text-link" href="signs.html">Посмотреть эталонный жест</a>
+            <a id="viewSignLink" class="text-link" href="signs.html">Namunaviy ishorani ko'rish</a>
           </div>
           <div class="history-block">
-            <div class="history-title"><span>История диалога</span><small>последние жесты</small></div>
-            <div class="history-list" id="historyList"><span class="history-empty">История пока пуста</span></div>
+            <div class="history-title"><span>Muloqot tarixi</span><small>so'nggi ishoralar</small></div>
+            <div class="history-list" id="historyList"><span class="history-empty">Tarix hozircha bo'sh</span></div>
           </div>
-          <button class="primary-button" id="confirmBtn" type="button" disabled>Подтвердить перевод</button>
+          <button class="primary-button" id="confirmBtn" type="button" disabled>Tarjimani tasdiqlash</button>
           <p class="confirm-status" id="confirmStatus" aria-live="polite"></p>
         </article>
 
         <article class="isora-card reply-card">
           <header class="card-head">
-            <div><span class="card-step">3</span><div><h3>Ответ жестами</h3><p>Соберите короткую фразу</p></div></div>
+            <div><span class="card-step">3</span><div><h3>Ishorada javob</h3><p>Qisqa ibora tuzing</p></div></div>
           </header>
-          <div class="quick-replies" id="quickReplies" aria-label="Быстрые фразы">
-            <button type="button" data-sign="assalomu_alaykum">Здравствуйте</button>
-            <button type="button" data-sign="iltimos">Пожалуйста</button>
-            <button type="button" data-sign="yordam_berish">Помочь</button>
-            <button type="button" data-sign="javob">Ответ</button>
-            <button type="button" data-sign="ochish">Открыть</button>
-            <button type="button" data-sign="yopish">Закрыть</button>
+          <div class="quick-replies" id="quickReplies" aria-label="Tezkor iboralar">
+            <button type="button" data-sign="assalomu_alaykum">Assalomu alaykum</button>
+            <button type="button" data-sign="iltimos">Iltimos</button>
+            <button type="button" data-sign="yordam_berish">Yordam berish</button>
+            <button type="button" data-sign="javob">Javob</button>
+            <button type="button" data-sign="ochish">Ochish</button>
+            <button type="button" data-sign="yopish">Yopish</button>
           </div>
-          <div class="reply-sequence" id="replySequence"><span>Выберите фразу выше</span></div>
+          <div class="reply-sequence" id="replySequence"><span>Yuqoridagi iboralardan birini tanlang</span></div>
           <div class="reply-actions">
             <button class="primary-button" id="generateReplyBtn" type="button" disabled>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5V7Z" fill="currentColor"/></svg>
-              Показать ответ
+              Javobni ko'rsatish
             </button>
-            <button class="secondary-button" id="clearReplyBtn" type="button" disabled>Очистить</button>
+            <button class="secondary-button" id="clearReplyBtn" type="button" disabled>Tozalash</button>
           </div>
           <div class="avatar-output" id="avatarOutput">
             <div class="avatar-placeholder" id="avatarPlaceholder">
               <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8a11 11 0 1 1 0 22 11 11 0 0 1 0-22Zm-19 45c2-11 9-17 19-17s17 6 19 17H13Z" fill="currentColor"/></svg>
-              <div><strong>Видеожесты ответа</strong><span>Собранная фраза появится здесь</span></div>
+              <div><strong>Javobning videoishoralari</strong><span>Tuzilgan ibora shu yerda paydo bo'ladi</span></div>
             </div>
             <video id="replyVideo" class="hidden" controls playsinline></video>
           </div>
@@ -137,12 +137,12 @@
     </section>
 
     <section class="prototype-note">
-      <span>Текущая версия</span>
-      <p>Прототип распознаёт 50 изолированных жестов узбекского жестового языка. Перевод непрерывной речи, озвучивание и полноценный 3D‑аватар — следующие этапы продукта.</p>
+      <span>Joriy versiya</span>
+      <p>Prototip o'zbek imo-ishora tilidagi 50 ta alohida ishorani taniydi. Uzluksiz nutq tarjimasi, ovozlashtirish va to'liq 3D-avatar — mahsulotning keyingi bosqichlari.</p>
     </section>
   </main>
 
-  <footer class="isora-footer"><span>isora-ai</span><p>Делаем коммуникацию доступной</p></footer>
+  <footer class="isora-footer"><span>isora-ai</span><p>Muloqotni hammaga qulay qilamiz</p></footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>

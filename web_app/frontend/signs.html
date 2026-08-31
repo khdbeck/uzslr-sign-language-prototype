@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uz-Latn">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Isora-AI — каталог 50 жестов</title>
+  <title>Isora-AI — 50 ta ishora katalogi</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -154,22 +154,22 @@
 </head>
 <body class="isora-page">
 
-  <nav class="isora-nav" aria-label="Основная навигация">
-    <a class="isora-brand" href="index.html" aria-label="Isora-AI — главная">
+  <nav class="isora-nav" aria-label="Asosiy navigatsiya">
+    <a class="isora-brand" href="index.html" aria-label="Isora-AI — bosh sahifa">
       <svg class="brand-mark" viewBox="0 0 56 56" aria-hidden="true"><path d="M10 7h36a7 7 0 0 1 7 7v23a7 7 0 0 1-7 7H28L16 52v-8h-6a7 7 0 0 1-7-7V14a7 7 0 0 1 7-7Z" fill="currentColor"/><path d="M15 25v7M23 19v19M31 15v27M39 20v17M47 25v7" fill="none" stroke="#130b21" stroke-linecap="round" stroke-width="4"/></svg>
       <span>isora-ai</span>
     </a>
     <div class="isora-nav-links">
-      <a href="index.html" class="isora-nav-link">Диалог</a>
-      <a href="signs.html" class="isora-nav-link active">50 жестов</a>
-      <a href="sign_production.html" class="isora-nav-link">Ответ жестами</a>
+      <a href="index.html" class="isora-nav-link">Muloqot</a>
+      <a href="signs.html" class="isora-nav-link active">50 ta ishora</a>
+      <a href="sign_production.html" class="isora-nav-link">Ishorada javob</a>
     </div>
   </nav>
 
   <div class="signs-header">
-    <h1 class="signs-title">50 жестов прототипа</h1>
-    <p class="signs-subtitle">Выберите карточку, чтобы посмотреть жест крупнее. Для навигации можно использовать стрелки клавиатуры.</p>
-    <input class="signs-search" type="search" id="searchInput" placeholder="Найти жест…" aria-label="Поиск жеста" />
+    <h1 class="signs-title">Prototipdagi 50 ta ishora</h1>
+    <p class="signs-subtitle">Ishorani kattaroq ko'rish uchun kartochkani tanlang. O'tish uchun klaviaturadagi yo'nalish tugmalaridan foydalanishingiz mumkin.</p>
+    <input class="signs-search" type="search" id="searchInput" placeholder="Ishorani topish…" aria-label="Ishorani qidirish" />
   </div>
 
   <div class="signs-grid" id="signsGrid"></div>
@@ -177,17 +177,17 @@
   <!-- fullscreen modal -->
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
     <div class="modal" id="modal">
-      <button class="modal-close" id="modalClose" aria-label="Закрыть">×</button>
+      <button class="modal-close" id="modalClose" aria-label="Yopish">×</button>
       <div class="modal-title" id="modalTitle"></div>
       <div class="modal-counter" id="modalCounter"></div>
       <div class="modal-gifs">
         <div class="modal-gif-wrap">
           <img class="modal-gif" id="modalGif0" src="" alt="" />
-          <span class="modal-rep-tag">вариант 1</span>
+          <span class="modal-rep-tag">1-variant</span>
         </div>
         <div class="modal-gif-wrap">
           <img class="modal-gif" id="modalGif1" src="" alt="" />
-          <span class="modal-rep-tag">вариант 2</span>
+          <span class="modal-rep-tag">2-variant</span>
         </div>
       </div>
       <div class="modal-nav">
@@ -230,7 +230,7 @@
       ));
 
       if (visibleSigns.length === 0) {
-        grid.innerHTML = '<p class="no-results">По вашему запросу жестов не найдено.</p>';
+        grid.innerHTML = '<p class="no-results">So\'rovingiz bo\'yicha ishora topilmadi.</p>';
         return;
       }
 
@@ -249,12 +249,12 @@
             <div class="sign-gif-wrap">
               <img class="sign-gif" src="/signs/${enc}/rep_000.gif" alt="${sign} rep 1" loading="lazy"
                 onerror="this.parentElement.style.display='none'" />
-              <span class="rep-tag">вариант 1</span>
+              <span class="rep-tag">1-variant</span>
             </div>
             <div class="sign-gif-wrap">
               <img class="sign-gif" src="/signs/${enc}/rep_001.gif" alt="${sign} rep 2" loading="lazy"
                 onerror="this.parentElement.style.display='none'" />
-              <span class="rep-tag">вариант 2</span>
+              <span class="rep-tag">2-variant</span>
             </div>
           </div>
         `;
@@ -300,7 +300,7 @@
       const n    = visibleSigns.length;
 
       modalTitle.textContent   = label(sign);
-      modalCounter.textContent = `жест ${modalIndex + 1} из ${n}`;
+      modalCounter.textContent = `${modalIndex + 1}-ishora, jami ${n} ta`;
 
       modalGif0.src = `/signs/${enc}/rep_000.gif`;
       modalGif0.alt = `${sign} rep 1`;

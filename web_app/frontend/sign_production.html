@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uz-Latn">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Isora-AI — ответ жестами</title>
+  <title>Isora-AI — ishorada javob</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -77,53 +77,53 @@
   </style>
 </head>
 <body class="isora-page">
-  <nav class="isora-nav" aria-label="Основная навигация">
-    <a class="isora-brand" href="index.html" aria-label="Isora-AI — главная">
+  <nav class="isora-nav" aria-label="Asosiy navigatsiya">
+    <a class="isora-brand" href="index.html" aria-label="Isora-AI — bosh sahifa">
       <svg class="brand-mark" viewBox="0 0 56 56" aria-hidden="true"><path d="M10 7h36a7 7 0 0 1 7 7v23a7 7 0 0 1-7 7H28L16 52v-8h-6a7 7 0 0 1-7-7V14a7 7 0 0 1 7-7Z" fill="currentColor"/><path d="M15 25v7M23 19v19M31 15v27M39 20v17M47 25v7" fill="none" stroke="#130b21" stroke-linecap="round" stroke-width="4"/></svg>
       <span>isora-ai</span>
     </a>
     <div class="isora-nav-links">
-      <a href="index.html" class="isora-nav-link">Диалог</a>
-      <a href="signs.html" class="isora-nav-link">50 жестов</a>
-      <a href="sign_production.html" class="isora-nav-link active">Ответ жестами</a>
+      <a href="index.html" class="isora-nav-link">Muloqot</a>
+      <a href="signs.html" class="isora-nav-link">50 ta ishora</a>
+      <a href="sign_production.html" class="isora-nav-link active">Ishorada javob</a>
     </div>
   </nav>
 
   <div class="produce-layout">
     <div class="produce-header">
-      <h1 class="produce-title">Ответ жестами</h1>
-      <p class="produce-subtitle">Соберите фразу из доступных жестов и получите единый видеоряд</p>
+      <h1 class="produce-title">Ishorada javob</h1>
+      <p class="produce-subtitle">Mavjud ishoralardan ibora tuzing va yagona videoni oling</p>
     </div>
 
     <div class="video-section">
       <div class="video-placeholder" id="videoPlaceholder">
         <svg class="video-placeholder-icon" viewBox="0 0 64 64" aria-hidden="true" style="width:56px;color:var(--accent)"><path d="M21 14v36l29-18-29-18Z" fill="currentColor"/></svg>
-        <div>Выберите жесты ниже и нажмите <strong style="color:var(--text)">Показать ответ</strong></div>
+        <div>Quyidagi ishoralarni tanlang va <strong style="color:var(--text)">Javobni ko'rsatish</strong> tugmasini bosing</div>
       </div>
       <video id="outputVideo" controls autoplay loop playsinline></video>
       <div class="video-bar">
         <div class="video-sequence-label" id="videoLabel">—</div>
-        <a class="btn-download" id="downloadBtn" download="isora_sign_sequence.mp4">Скачать видео</a>
+        <a class="btn-download" id="downloadBtn" download="isora_sign_sequence.mp4">Videoni yuklab olish</a>
       </div>
     </div>
 
     <div class="bottom-grid">
       <div class="panel">
-        <div class="panel-title">Доступные жесты <span id="signCount" style="font-weight:400"></span></div>
-        <input class="sign-search" type="search" id="signSearch" placeholder="Найти жест…" autocomplete="off" aria-label="Поиск жеста" />
+        <div class="panel-title">Mavjud ishoralar <span id="signCount" style="font-weight:400"></span></div>
+        <input class="sign-search" type="search" id="signSearch" placeholder="Ishorani topish…" autocomplete="off" aria-label="Ishorani qidirish" />
         <div class="signs-grid" id="signsGrid">
-          <span style="color:var(--muted);font-size:0.8rem">Загружаем…</span>
+          <span style="color:var(--muted);font-size:0.8rem">Yuklanmoqda…</span>
         </div>
       </div>
 
       <div class="panel">
-        <div class="panel-title">Последовательность <span id="seqCount" style="font-weight:400"></span></div>
+        <div class="panel-title">Ketma-ketlik <span id="seqCount" style="font-weight:400"></span></div>
         <div class="sequence-area" id="sequenceArea">
-          <span class="seq-empty" id="seqEmpty">Нажмите на жест, чтобы добавить · перетащите для изменения порядка</span>
+          <span class="seq-empty" id="seqEmpty">Qo'shish uchun ishorani bosing · tartibni o'zgartirish uchun sudrang</span>
         </div>
         <div class="controls-row">
-          <button class="btn btn-primary" id="generateBtn" disabled>Показать ответ</button>
-          <button class="btn btn-ghost" id="clearBtn">Очистить</button>
+          <button class="btn btn-primary" id="generateBtn" disabled>Javobni ko'rsatish</button>
+          <button class="btn btn-ghost" id="clearBtn">Tozalash</button>
         </div>
         <div class="status-line" id="statusLine"></div>
       </div>
@@ -155,12 +155,12 @@
         allSigns   = data.signs || [];
         signCount.textContent = `(${allSigns.length})`;
         renderSignGrid(allSigns);
-      } catch { signsGrid.innerHTML = '<span style="color:var(--danger)">Не удалось загрузить жесты</span>'; }
+      } catch { signsGrid.innerHTML = '<span style="color:var(--danger)">Ishoralarni yuklab bo\'lmadi</span>'; }
     }
 
     function renderSignGrid(signs) {
       signsGrid.innerHTML = '';
-      if (!signs.length) { signsGrid.innerHTML = '<span style="color:var(--muted);font-size:0.8rem">Ничего не найдено</span>'; return; }
+      if (!signs.length) { signsGrid.innerHTML = '<span style="color:var(--muted);font-size:0.8rem">Hech narsa topilmadi</span>'; return; }
       signs.forEach(sign => {
         const chip = document.createElement('div');
         chip.className = 'sign-chip';
@@ -177,7 +177,7 @@
       document.querySelectorAll('.sign-chip').forEach(chip => {
         if (chip.dataset.sign === lastSign) {
           chip.classList.add('sign-chip-disabled');
-          chip.title = 'Один жест нельзя добавить дважды подряд';
+          chip.title = "Bitta ishorani ketma-ket ikki marta qo'shib bo'lmaydi";
         } else {
           chip.classList.remove('sign-chip-disabled');
           chip.title = '';
@@ -213,7 +213,7 @@
         const chip = document.createElement('div');
         chip.className = 'seq-chip';
         chip.draggable = true;
-        chip.innerHTML = `<span class="seq-chip-num">${idx+1}</span><span>${window.isoraSignLabel(sign)}</span><button class="seq-chip-remove" title="Удалить" aria-label="Удалить ${window.isoraSignLabel(sign)}">×</button>`;
+        chip.innerHTML = `<span class="seq-chip-num">${idx+1}</span><span>${window.isoraSignLabel(sign)}</span><button class="seq-chip-remove" title="Olib tashlash" aria-label="Olib tashlash: ${window.isoraSignLabel(sign)}">×</button>`;
         chip.querySelector('.seq-chip-remove').addEventListener('click', e => { e.stopPropagation(); removeFromSequence(idx); });
         chip.addEventListener('dragstart', e => { dragSrcIdx = idx; chip.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
         chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
@@ -236,7 +236,7 @@
     generateBtn.addEventListener('click', async () => {
       if (!sequence.length) return;
       generateBtn.disabled = true; clearBtn.disabled = true;
-      setStatus('<span class="spinner"></span>Собираем видеожесты…');
+      setStatus('<span class="spinner"></span>Videoishoralar yig\'ilmoqda…');
       resetVideo();
       try {
         const res = await fetch('/api/produce-sign-video', {
@@ -254,9 +254,9 @@
         videoLabel.innerHTML = `<span>${sequence.map(window.isoraSignLabel).join(' → ')}</span>`;
         downloadBtn.href = currentBlobUrl;
         downloadBtn.classList.add('visible');
-        setStatus(`Готово: ${sequence.length} ${sequence.length === 1 ? 'жест' : 'жеста(ов)'}`, 'ok');
+        setStatus(`Tayyor: ${sequence.length} ta ishora`, 'ok');
       } catch (e) {
-        setStatus(`Ошибка: ${e.message}`, 'error');
+        setStatus(`Xato: ${e.message}`, 'error');
       } finally {
         generateBtn.disabled = false; clearBtn.disabled = false;
       }

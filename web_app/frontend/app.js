@@ -61,7 +61,7 @@ function connectSocket() {
   socket.addEventListener('open', () => {
     socketReady = true;
     waitingForResponse = false;
-    setStatus('Камера готова — покажите обе руки', 'ready');
+    setStatus("Kamera tayyor — ikkala qo'lingizni ko'rsating", 'ready');
   });
 
   socket.addEventListener('message', (event) => {
@@ -73,12 +73,12 @@ function connectSocket() {
     if (!data.handsVisible) {
       gestureLocked = false;
       cameraWrapper.classList.remove('tracking');
-      setStatus('Покажите обе руки в кадре', 'ready');
+      setStatus("Ikkala qo'lingizni kadrda ko'rsating", 'ready');
       return;
     }
 
     cameraWrapper.classList.add('tracking');
-    setStatus(data.bufferFull ? 'Анализируем жест…' : 'Записываем движение…', 'active');
+    setStatus(data.bufferFull ? 'Ishora tahlil qilinmoqda…' : 'Harakat yozib olinmoqda…', 'active');
 
     if (!data.prediction || gestureLocked) return;
     gestureLocked = true;
@@ -95,12 +95,12 @@ function connectSocket() {
   socket.addEventListener('close', () => {
     socketReady = false;
     waitingForResponse = false;
-    setStatus('Восстанавливаем соединение…', 'connecting');
+    setStatus('Ulanish tiklanmoqda…', 'connecting');
     reconnectTimer = window.setTimeout(connectSocket, 2000);
   });
 
   socket.addEventListener('error', () => {
-    setStatus('Нет соединения с распознаванием', 'error');
+    setStatus("Tanib olish tizimi bilan aloqa yo'q", 'error');
   });
 }
 
@@ -132,7 +132,7 @@ function showUncertainResult(confidence) {
   predictionIdle.classList.add('hidden');
   predictionResult.classList.remove('hidden');
   predictionResult.classList.add('uncertain');
-  predLabel.textContent = 'Не удалось распознать';
+  predLabel.textContent = "Ishorani aniqlab bo'lmadi";
   confPct.textContent = `${percent}%`;
   confBar.style.width = `${percent}%`;
   viewSignLink.href = 'signs.html';
@@ -141,7 +141,7 @@ function showUncertainResult(confidence) {
 
 function renderHistory() {
   if (!history.length) {
-    historyList.innerHTML = '<span class="history-empty">История пока пуста</span>';
+    historyList.innerHTML = '<span class="history-empty">Tarix hozircha bo\'sh</span>';
     return;
   }
 
@@ -167,7 +167,7 @@ clearBtn.addEventListener('click', () => {
 
 confirmBtn.addEventListener('click', () => {
   if (!latestSign) return;
-  confirmStatus.textContent = `Перевод «${window.isoraSignLabel(latestSign)}» подтверждён`;
+  confirmStatus.textContent = `«${window.isoraSignLabel(latestSign)}» tarjimasi tasdiqlandi`;
 });
 
 function buildLandmarkVector(results) {
@@ -238,9 +238,9 @@ function onHolisticResults(results) {
 
 async function startCamera() {
   if (!window.Holistic || !window.Camera) {
-    cameraEmpty.querySelector('strong').textContent = 'Модуль камеры не загрузился';
-    cameraEmpty.querySelector('span').textContent = 'Проверьте интернет-соединение и обновите страницу';
-    setStatus('Не удалось загрузить MediaPipe', 'error');
+    cameraEmpty.querySelector('strong').textContent = 'Kamera moduli yuklanmadi';
+    cameraEmpty.querySelector('span').textContent = 'Internet aloqasini tekshiring va sahifani yangilang';
+    setStatus('MediaPipe yuklanmadi', 'error');
     return;
   }
 
@@ -267,18 +267,18 @@ async function startCamera() {
     cameraEmpty.classList.add('hidden');
   } catch (error) {
     cameraEmpty.classList.remove('hidden');
-    cameraEmpty.querySelector('strong').textContent = 'Камера недоступна';
-    cameraEmpty.querySelector('span').textContent = 'Разрешите доступ в настройках браузера и обновите страницу';
-    setStatus('Нет доступа к камере', 'error');
+    cameraEmpty.querySelector('strong').textContent = 'Kamera mavjud emas';
+    cameraEmpty.querySelector('span').textContent = 'Brauzer sozlamalarida kameraga ruxsat bering va sahifani yangilang';
+    setStatus("Kameraga ruxsat yo'q", 'error');
   }
 }
 
 function renderReplySequence() {
   if (!replySigns.length) {
-    replySequence.innerHTML = '<span>Выберите фразу выше</span>';
+    replySequence.innerHTML = '<span>Yuqoridagi iboralardan birini tanlang</span>';
   } else {
     replySequence.innerHTML = replySigns.map((sign, index) => `
-      <button type="button" data-remove-index="${index}" aria-label="Удалить ${window.isoraSignLabel(sign)}">
+      <button type="button" data-remove-index="${index}" aria-label="Olib tashlash: ${window.isoraSignLabel(sign)}">
         ${window.isoraSignLabel(sign)}<b aria-hidden="true">×</b>
       </button>
     `).join('');
@@ -293,7 +293,7 @@ quickReplies.addEventListener('click', (event) => {
   if (!button) return;
   const sign = button.dataset.sign;
   if (replySigns.length >= 8) {
-    replyStatus.textContent = 'Для демонстрации можно выбрать до 8 жестов';
+    replyStatus.textContent = "Namoyish uchun ko'pi bilan 8 ta ishorani tanlash mumkin";
     return;
   }
   replySigns.push(sign);
@@ -318,7 +318,7 @@ generateReplyBtn.addEventListener('click', async () => {
   if (!replySigns.length) return;
   generateReplyBtn.disabled = true;
   generateReplyBtn.classList.add('loading');
-  replyStatus.textContent = 'Собираем видеожесты…';
+  replyStatus.textContent = "Videoishoralar yig'ilmoqda…";
 
   try {
     const response = await fetch('/api/produce-sign-video', {
@@ -328,7 +328,7 @@ generateReplyBtn.addEventListener('click', async () => {
     });
     if (!response.ok) {
       const details = await response.json().catch(() => ({}));
-      throw new Error(details.detail || 'Не удалось собрать ответ');
+      throw new Error(details.detail || "Javobni yig'ib bo'lmadi");
     }
 
     if (currentVideoUrl) URL.revokeObjectURL(currentVideoUrl);
@@ -336,7 +336,7 @@ generateReplyBtn.addEventListener('click', async () => {
     replyVideo.src = currentVideoUrl;
     avatarPlaceholder.classList.add('hidden');
     replyVideo.classList.remove('hidden');
-    replyStatus.textContent = 'Ответ готов';
+    replyStatus.textContent = 'Javob tayyor';
     await replyVideo.play().catch(() => {});
   } catch (error) {
     replyStatus.textContent = error.message;
