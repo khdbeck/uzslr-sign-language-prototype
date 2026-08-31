@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UzSLR — Produce Sign Video</title>
+  <title>Isora-AI — ответ жестами</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Azeret+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <style>
     .produce-layout {
@@ -75,57 +76,61 @@
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
-<body>
-  <nav class="nav">
-    <div class="nav-logo">UzSLR</div>
-    <div class="nav-links">
-      <a href="index.html" class="nav-link">Recognise</a>
-      <a href="signs.html" class="nav-link">50 Signs</a>
-      <a href="sign_production.html" class="nav-link active">Produce</a>
+<body class="isora-page">
+  <nav class="isora-nav" aria-label="Основная навигация">
+    <a class="isora-brand" href="index.html" aria-label="Isora-AI — главная">
+      <svg class="brand-mark" viewBox="0 0 56 56" aria-hidden="true"><path d="M10 7h36a7 7 0 0 1 7 7v23a7 7 0 0 1-7 7H28L16 52v-8h-6a7 7 0 0 1-7-7V14a7 7 0 0 1 7-7Z" fill="currentColor"/><path d="M15 25v7M23 19v19M31 15v27M39 20v17M47 25v7" fill="none" stroke="#130b21" stroke-linecap="round" stroke-width="4"/></svg>
+      <span>isora-ai</span>
+    </a>
+    <div class="isora-nav-links">
+      <a href="index.html" class="isora-nav-link">Диалог</a>
+      <a href="signs.html" class="isora-nav-link">50 жестов</a>
+      <a href="sign_production.html" class="isora-nav-link active">Ответ жестами</a>
     </div>
   </nav>
 
   <div class="produce-layout">
     <div class="produce-header">
-      <h1 class="produce-title">Produce Sign Video</h1>
-      <p class="produce-subtitle">Build a sequence → generate an avatar signing it</p>
+      <h1 class="produce-title">Ответ жестами</h1>
+      <p class="produce-subtitle">Соберите фразу из доступных жестов и получите единый видеоряд</p>
     </div>
 
     <div class="video-section">
       <div class="video-placeholder" id="videoPlaceholder">
-        <div class="video-placeholder-icon">▶</div>
-        <div>Select signs below and click <strong style="color:var(--text)">Generate</strong></div>
+        <svg class="video-placeholder-icon" viewBox="0 0 64 64" aria-hidden="true" style="width:56px;color:var(--accent)"><path d="M21 14v36l29-18-29-18Z" fill="currentColor"/></svg>
+        <div>Выберите жесты ниже и нажмите <strong style="color:var(--text)">Показать ответ</strong></div>
       </div>
       <video id="outputVideo" controls autoplay loop playsinline></video>
       <div class="video-bar">
         <div class="video-sequence-label" id="videoLabel">—</div>
-        <a class="btn-download" id="downloadBtn" download="sign_sequence.mp4">↓ Download</a>
+        <a class="btn-download" id="downloadBtn" download="isora_sign_sequence.mp4">Скачать видео</a>
       </div>
     </div>
 
     <div class="bottom-grid">
       <div class="panel">
-        <div class="panel-title">Available Signs <span id="signCount" style="font-weight:400"></span></div>
-        <input class="sign-search" type="text" id="signSearch" placeholder="search signs…" autocomplete="off" />
+        <div class="panel-title">Доступные жесты <span id="signCount" style="font-weight:400"></span></div>
+        <input class="sign-search" type="search" id="signSearch" placeholder="Найти жест…" autocomplete="off" aria-label="Поиск жеста" />
         <div class="signs-grid" id="signsGrid">
-          <span style="color:var(--muted);font-size:0.8rem">Loading…</span>
+          <span style="color:var(--muted);font-size:0.8rem">Загружаем…</span>
         </div>
       </div>
 
       <div class="panel">
-        <div class="panel-title">Sequence <span id="seqCount" style="font-weight:400"></span></div>
+        <div class="panel-title">Последовательность <span id="seqCount" style="font-weight:400"></span></div>
         <div class="sequence-area" id="sequenceArea">
-          <span class="seq-empty" id="seqEmpty">Click signs to add · drag to reorder</span>
+          <span class="seq-empty" id="seqEmpty">Нажмите на жест, чтобы добавить · перетащите для изменения порядка</span>
         </div>
         <div class="controls-row">
-          <button class="btn btn-primary" id="generateBtn" disabled>Generate</button>
-          <button class="btn btn-ghost" id="clearBtn">Clear</button>
+          <button class="btn btn-primary" id="generateBtn" disabled>Показать ответ</button>
+          <button class="btn btn-ghost" id="clearBtn">Очистить</button>
         </div>
         <div class="status-line" id="statusLine"></div>
       </div>
     </div>
   </div>
 
+  <script src="labels.js"></script>
   <script>
     const signsGrid        = document.getElementById('signsGrid');
     const signSearch       = document.getElementById('signSearch');
@@ -150,16 +155,17 @@
         allSigns   = data.signs || [];
         signCount.textContent = `(${allSigns.length})`;
         renderSignGrid(allSigns);
-      } catch { signsGrid.innerHTML = '<span style="color:var(--danger)">Failed to load</span>'; }
+      } catch { signsGrid.innerHTML = '<span style="color:var(--danger)">Не удалось загрузить жесты</span>'; }
     }
 
     function renderSignGrid(signs) {
       signsGrid.innerHTML = '';
-      if (!signs.length) { signsGrid.innerHTML = '<span style="color:var(--muted);font-size:0.8rem">No matches</span>'; return; }
+      if (!signs.length) { signsGrid.innerHTML = '<span style="color:var(--muted);font-size:0.8rem">Ничего не найдено</span>'; return; }
       signs.forEach(sign => {
         const chip = document.createElement('div');
         chip.className = 'sign-chip';
-        chip.textContent = sign;
+        chip.dataset.sign = sign;
+        chip.textContent = window.isoraSignLabel(sign);
         chip.addEventListener('click', () => addToSequence(sign));
         signsGrid.appendChild(chip);
       });
@@ -169,9 +175,9 @@
     function updateChipStates() {
       const lastSign = sequence.length > 0 ? sequence[sequence.length - 1] : null;
       document.querySelectorAll('.sign-chip').forEach(chip => {
-        if (chip.textContent === lastSign) {
+        if (chip.dataset.sign === lastSign) {
           chip.classList.add('sign-chip-disabled');
-          chip.title = `Cannot add "${lastSign}" twice in a row`;
+          chip.title = 'Один жест нельзя добавить дважды подряд';
         } else {
           chip.classList.remove('sign-chip-disabled');
           chip.title = '';
@@ -181,7 +187,9 @@
 
     signSearch.addEventListener('input', () => {
       const q = signSearch.value.toLowerCase();
-      renderSignGrid(q ? allSigns.filter(s => s.toLowerCase().includes(q)) : allSigns);
+      renderSignGrid(q ? allSigns.filter(s => (
+        s.toLowerCase().includes(q) || window.isoraSignLabel(s).toLowerCase().includes(q)
+      )) : allSigns);
     });
 
     function addToSequence(sign) {
@@ -205,7 +213,7 @@
         const chip = document.createElement('div');
         chip.className = 'seq-chip';
         chip.draggable = true;
-        chip.innerHTML = `<span class="seq-chip-num">${idx+1}</span><span>${sign}</span><button class="seq-chip-remove" title="Remove">×</button>`;
+        chip.innerHTML = `<span class="seq-chip-num">${idx+1}</span><span>${window.isoraSignLabel(sign)}</span><button class="seq-chip-remove" title="Удалить" aria-label="Удалить ${window.isoraSignLabel(sign)}">×</button>`;
         chip.querySelector('.seq-chip-remove').addEventListener('click', e => { e.stopPropagation(); removeFromSequence(idx); });
         chip.addEventListener('dragstart', e => { dragSrcIdx = idx; chip.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
         chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
@@ -228,7 +236,7 @@
     generateBtn.addEventListener('click', async () => {
       if (!sequence.length) return;
       generateBtn.disabled = true; clearBtn.disabled = true;
-      setStatus('<span class="spinner"></span>Generating…');
+      setStatus('<span class="spinner"></span>Собираем видеожесты…');
       resetVideo();
       try {
         const res = await fetch('/api/produce-sign-video', {
@@ -243,12 +251,12 @@
         outputVideo.src = currentBlobUrl;
         outputVideo.classList.add('visible');
         videoPlaceholder.style.display = 'none';
-        videoLabel.innerHTML = `<span>${sequence.join(' → ')}</span>`;
+        videoLabel.innerHTML = `<span>${sequence.map(window.isoraSignLabel).join(' → ')}</span>`;
         downloadBtn.href = currentBlobUrl;
         downloadBtn.classList.add('visible');
-        setStatus(`✓ ${sequence.length} sign${sequence.length > 1 ? 's' : ''} generated`, 'ok');
+        setStatus(`Готово: ${sequence.length} ${sequence.length === 1 ? 'жест' : 'жеста(ов)'}`, 'ok');
       } catch (e) {
-        setStatus(`Error: ${e.message}`, 'error');
+        setStatus(`Ошибка: ${e.message}`, 'error');
       } finally {
         generateBtn.disabled = false; clearBtn.disabled = false;
       }

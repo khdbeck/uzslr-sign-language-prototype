@@ -1,617 +1,350 @@
-// constants 
 const BUFFER_SIZE = 32;
-const WS_URL      = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/infer`;
+const CONFIDENCE_THRESHOLD = 0.45;
+const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/infer`;
 
 const N_FACE = 468;
 const N_POSE = 33;
 const N_HAND = 21;
+const HAND_CONNECTIONS_LIST = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20], [0, 17]
+];
 
-// DOM: camera / prediction 
-const video      = document.getElementById('video');
-const overlay    = document.getElementById('overlay');
-const ctx        = overlay.getContext('2d');
-const statusDot  = document.getElementById('statusDot');
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const context = overlay.getContext('2d');
+const cameraWrapper = document.getElementById('cameraWrapper');
+const cameraEmpty = document.getElementById('cameraEmpty');
+const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
-const bufferBar  = document.getElementById('bufferBar');
-const cameraWrap = document.getElementById('cameraWrapper');
-
-const predictionIdle   = document.getElementById('predictionIdle');
+const bufferBar = document.getElementById('bufferBar');
+const predictionIdle = document.getElementById('predictionIdle');
 const predictionResult = document.getElementById('predictionResult');
-const predLabel        = document.getElementById('predLabel');
-const confBar          = document.getElementById('confBar');
-const confPct          = document.getElementById('confPct');
-const viewSignLink     = document.getElementById('viewSignLink');
-const historyList      = document.getElementById('historyList');
+const predLabel = document.getElementById('predLabel');
+const confBar = document.getElementById('confBar');
+const confPct = document.getElementById('confPct');
+const viewSignLink = document.getElementById('viewSignLink');
+const historyList = document.getElementById('historyList');
+const clearBtn = document.getElementById('clearBtn');
+const confirmBtn = document.getElementById('confirmBtn');
+const confirmStatus = document.getElementById('confirmStatus');
+const quickReplies = document.getElementById('quickReplies');
+const replySequence = document.getElementById('replySequence');
+const generateReplyBtn = document.getElementById('generateReplyBtn');
+const clearReplyBtn = document.getElementById('clearReplyBtn');
+const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+const replyVideo = document.getElementById('replyVideo');
+const replyStatus = document.getElementById('replyStatus');
 
-// DOM: LLM panel 
-const llmPanel       = document.getElementById('llmPanel');
-const llmToggle      = document.getElementById('llmToggle');
-const llmControls    = document.getElementById('llmControls');
-const llmModelSelect = document.getElementById('llmModelSelect');
-const llmPrompt      = document.getElementById('llmPrompt');
-const resetPromptBtn = document.getElementById('resetPromptBtn');
-const clearSignsBtn  = document.getElementById('clearSignsBtn');
-const collectedSigns = document.getElementById('collectedSigns');
-const llmOutput      = document.getElementById('llmOutput');
-const llmStatus      = document.getElementById('llmStatus');
-
-// DOM: admin 
-const rolePill           = document.getElementById('rolePill');
-const roleDot            = document.getElementById('roleDot');
-const roleLabel          = document.getElementById('roleLabel');
-const roleDropdown       = document.getElementById('roleDropdown');
-const switchToUser       = document.getElementById('switchToUser');
-const switchToAdmin      = document.getElementById('switchToAdmin');
-const adminModal         = document.getElementById('adminModal');
-const adminModalClose    = document.getElementById('adminModalClose');
-const adminPasswordInput = document.getElementById('adminPasswordInput');
-const adminLoginBtn      = document.getElementById('adminLoginBtn');
-const adminError         = document.getElementById('adminError');
-const adminControls      = document.getElementById('adminControls');
-const savePromptBtn      = document.getElementById('savePromptBtn');
-
-// app state 
-let ws                 = null;
-let wsReady            = false;
+let socket;
+let socketReady = false;
 let waitingForResponse = false;
+let gestureLocked = false;
+let latestSign = null;
+let currentVideoUrl = null;
+let reconnectTimer = null;
+const history = [];
+const replySigns = [];
 
-// LLM config (from /api/config)
-let llmEnabled          = false;
-let llmHandAbsentFrames = 30;
-let defaultSystemPrompt = '';
-
-// Admin state
-let isAdmin    = false;
-let adminToken = null;
-
-// CLIENT-SIDE STATE MACHINE 
-// States:
-//   IDLE          — no hands, nothing happening
-//   FILLING       — hands visible, collecting 32 frames, bar animating
-//   PREDICTED     — buffer just completed, prediction shown, bar full
-//   ABSENT        — hands gone after prediction, counting down for LLM
-//   LLM_FORMING   — POST in flight
-//
-// Transitions:
-//   IDLE       + handsVisible=true              → FILLING (clear prediction, reset bar)
-//   FILLING    + bufferFull=true + prediction   → PREDICTED (show prediction)
-//   PREDICTED  + handsVisible=true              → FILLING (new sign: clear pred, reset bar)
-//   PREDICTED  + handsVisible=false             → ABSENT (start absent counter)
-//   ABSENT     + handsVisible=true              → FILLING (new sign)
-//   ABSENT     + absentCount >= threshold       → LLM_FORMING (if LLM on) or IDLE
-//   LLM_FORMING                                 → IDLE (after response)
-
-const STATE = { IDLE: 0, FILLING: 1, PREDICTED: 2, ABSENT: 3, LLM_FORMING: 4 };
-let appState     = STATE.IDLE;
-let absentCount  = 0;
-
-// Minimum ms to hold prediction visible before allowing next sign transition.
-const PRED_HOLD_MS        = 4000;   // ms prediction card stays visible
-let predictionLockedUntil = 0;   // timestamp — block state transitions until this
-
-// LLM collection
-let llmActive         = false;
-let collectedSignsMap = new Map();  // sign → count
-let lastCollectedSign = null;       // prevents adding same sign repeatedly
-
-// state machine transition 
-function transition(newState) {
-  appState = newState;
+function setStatus(message, state = 'connecting') {
+  statusText.textContent = message;
+  statusDot.className = `status-dot ${state}`;
 }
 
-function handleServerMessage(msg) {
-  const handsVisible = msg.handsVisible;
-  const bufferFull   = msg.bufferFull;
-  const prediction   = msg.prediction;
-  const confidence   = msg.confidence;
-  const bufferSize   = msg.bufferSize;
+function connectSocket() {
+  window.clearTimeout(reconnectTimer);
+  socket = new WebSocket(WS_URL);
 
-  // always update buffer bar while filling
-  if (appState === STATE.FILLING) {
-    updateBufferBar(bufferSize);
-  }
-
-  switch (appState) {
-
-    case STATE.IDLE:
-      if (handsVisible) {
-        transition(STATE.FILLING);
-        clearPrediction();
-        resetBufferBar();
-        setStatus('collecting…', 'active');
-        cameraWrap.classList.add('active');
-        absentCount = 0;
-      }
-      break;
-
-    case STATE.FILLING:
-      if (!handsVisible) {
-        // hands dropped before buffer filled — go back to idle
-        transition(STATE.IDLE);
-        resetBufferBar();
-        setStatus('show both hands', 'inactive');
-        cameraWrap.classList.remove('active');
-        break;
-      }
-      if (bufferFull && prediction) {
-        transition(STATE.PREDICTED);
-        predictionLockedUntil = Date.now() + PRED_HOLD_MS;  // hold prediction visible
-        updateBufferBar(BUFFER_SIZE);
-        showPrediction(prediction, confidence);
-        if (llmActive) maybeCollectSign(prediction);
-        // reset bar after brief full-bar flash
-        setTimeout(() => resetBufferBar(), 400);
-      }
-      break;
-
-    case STATE.PREDICTED:
-      // do not transition until prediction has been visible for PRED_HOLD_MS
-      if (Date.now() < predictionLockedUntil) break;
-
-      if (handsVisible) {
-        // user started a new sign — clear prediction and start filling
-        transition(STATE.FILLING);
-        clearPrediction();
-        resetBufferBar();
-        setStatus('collecting…', 'active');
-        absentCount = 0;
-      } else {
-        // hands gone — start absent countdown
-        transition(STATE.ABSENT);
-        absentCount = 1;
-        updateAbsentStatus();
-      }
-      break;
-
-    case STATE.ABSENT:
-      if (handsVisible) {
-        // hands came back — new sign
-        transition(STATE.FILLING);
-        clearPrediction();
-        resetBufferBar();
-        setStatus('collecting…', 'active');
-        absentCount = 0;
-        // if LLM was forming a sentence and hands return, clear old collection
-        if (llmActive && !formingInProgress) {
-          clearCollectionForNewSentence();
-        }
-        break;
-      }
-      absentCount++;
-      updateAbsentStatus();
-      if (llmActive && collectedSignsMap.size > 0 && !formingInProgress) {
-        if (absentCount >= llmHandAbsentFrames) {
-          transition(STATE.LLM_FORMING);
-          formSentence();
-        }
-      } else if (absentCount > llmHandAbsentFrames + 10) {
-        // no LLM or nothing collected — just go idle
-        transition(STATE.IDLE);
-        setStatus('show both hands', 'inactive');
-        cameraWrap.classList.remove('active');
-      }
-      break;
-
-    case STATE.LLM_FORMING:
-      // waiting for POST response — ignore WebSocket messages except hands
-      if (handsVisible) {
-        // user started signing again before sentence finished
-        // let formSentence() complete, then clearCollectionForNewSentence() on next FILLING
-      }
-      break;
-  }
-}
-
-function updateAbsentStatus() {
-  if (llmActive && collectedSignsMap.size > 0 && !formingInProgress) {
-    const remaining = Math.max(0, llmHandAbsentFrames - absentCount);
-    if (remaining > 0) {
-      setStatus(`forming in ${remaining} frames…`, 'inactive');
-    }
-  } else {
-    setStatus('show both hands', 'inactive');
-    cameraWrap.classList.remove('active');
-  }
-}
-
-// LLM sign collection 
-function maybeCollectSign(sign) {
-  if (sign === lastCollectedSign) return;  // same sign as last — skip
-  lastCollectedSign = sign;
-  if (collectedSignsMap.has(sign)) {
-    collectedSignsMap.set(sign, collectedSignsMap.get(sign) + 1);
-  } else {
-    collectedSignsMap.set(sign, 1);
-  }
-  renderChips();
-}
-
-function clearCollectionForNewSentence() {
-  collectedSignsMap.clear();
-  lastCollectedSign = null;
-  formingInProgress = false;
-  renderChips();
-  llmOutput.textContent = '';
-  llmOutput.classList.remove('fade-out');
-  setLlmStatus('');
-}
-
-let formingInProgress = false;
-
-async function formSentence() {
-  if (formingInProgress || collectedSignsMap.size === 0) return;
-  formingInProgress = true;
-
-  const model  = llmModelSelect.value;
-  const prompt = llmPrompt.value;
-
-  // send unique signs in order — the LLM prompt expects deduplicated words
-  // e.g. Map{maktab:2, borish:1} → ['maktab', 'borish']  NOT ['maktab','maktab','borish']
-  const signsList = [...collectedSignsMap.keys()];
-
-  const shortName = model.split('/').pop();
-  setLlmStatus(`Forming sentence with ${shortName}, please wait…`);
-  setStatus('forming sentence…', 'inactive');
-
-  try {
-    const res  = await fetch('/api/form-sentence', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      // admin sends their current prompt text; regular users send empty -> server uses active prompt
-    body:    JSON.stringify({ signs: signsList, systemPrompt: isAdmin ? prompt : '', model }),
-    });
-    const data = await res.json();
-
-    llmOutput.textContent = data.sentence || '—';
-    llmOutput.classList.remove('fade-out');
-    setLlmStatus('');
-
-    // fade out after 8 s then reset for next sentence
-    setTimeout(() => {
-      llmOutput.classList.add('fade-out');
-      setTimeout(() => {
-        clearCollectionForNewSentence();
-        transition(STATE.IDLE);
-        setStatus('show both hands', 'inactive');
-        cameraWrap.classList.remove('active');
-      }, 600);
-    }, 15000);   // sentence stays visible for 15 s
-
-  } catch (err) {
-    setLlmStatus('Error forming sentence.');
-    console.error('[llm]', err);
-    formingInProgress = false;
-    transition(STATE.IDLE);
-  }
-}
-
-function resetCollection() {
-  clearCollectionForNewSentence();   // also resets lastCollectedSign
-  transition(STATE.IDLE);
-  predictionLockedUntil = 0;         // clear any hold lock
-  setStatus('show both hands', 'inactive');
-  cameraWrap.classList.remove('active');
-}
-
-function renderChips() {
-  collectedSigns.innerHTML = '';
-  if (collectedSignsMap.size === 0) {
-    collectedSigns.innerHTML = '<span class="collected-empty">No signs collected yet</span>';
-    return;
-  }
-  collectedSignsMap.forEach((count, sign) => {
-    const chip = document.createElement('span');
-    chip.className = 'sign-chip';
-    chip.innerHTML = `${sign.replace(/_/g,' ')}${count > 1 ? ` <span class="chip-count">×${count}</span>` : ''}`;
-    collectedSigns.appendChild(chip);
+  socket.addEventListener('open', () => {
+    socketReady = true;
+    waitingForResponse = false;
+    setStatus('Камера готова — покажите обе руки', 'ready');
   });
-}
 
-function setLlmStatus(msg) { llmStatus.textContent = msg; }
+  socket.addEventListener('message', (event) => {
+    waitingForResponse = false;
+    const data = JSON.parse(event.data);
+    const progress = data.bufferFull ? 100 : Math.min(100, (data.bufferSize / BUFFER_SIZE) * 100);
+    bufferBar.style.width = `${progress}%`;
 
-// LLM toggle & prompt controls 
-function applyLlmToggle() {
-  llmActive = llmToggle.checked;
-  llmControls.classList.toggle('disabled', !llmActive);
-  if (!llmActive) resetCollection();
-}
-
-llmToggle.addEventListener('change', applyLlmToggle);
-clearSignsBtn.addEventListener('click', resetCollection);
-resetPromptBtn.addEventListener('click', () => { llmPrompt.value = defaultSystemPrompt; });
-
-document.querySelectorAll('input[name="promptMode"]').forEach(radio => {
-  radio.addEventListener('change', () => {
-    llmPrompt.readOnly = !(radio.value === 'edit' && llmActive);
-  });
-});
-
-// config load 
-async function loadConfig() {
-  try {
-    const res = await fetch('/api/config');
-    const cfg = await res.json();
-    llmEnabled          = cfg.llmEnabled;
-    llmHandAbsentFrames = cfg.llmHandAbsentFrames;
-    defaultSystemPrompt = cfg.defaultSystemPrompt;
-
-    if (llmEnabled) {
-      cfg.llmModels.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m; opt.textContent = m;
-        if (m === cfg.llmDefaultModel) opt.selected = true;
-        llmModelSelect.appendChild(opt);
-      });
-      // use the server's currently active prompt (may differ from default if admin changed it)
-      llmPrompt.value    = cfg.activePrompt || defaultSystemPrompt;
-      llmPanel.style.display = 'block';
-      applyLlmToggle();
+    if (!data.handsVisible) {
+      gestureLocked = false;
+      cameraWrapper.classList.remove('tracking');
+      setStatus('Покажите обе руки в кадре', 'ready');
+      return;
     }
-  } catch (e) { console.warn('[config]', e); }
-}
 
-// prediction UI
-function clearPrediction() {
-  predictionResult.classList.add('hidden');
-  predictionIdle.classList.remove('hidden');
+    cameraWrapper.classList.add('tracking');
+    setStatus(data.bufferFull ? 'Анализируем жест…' : 'Записываем движение…', 'active');
+
+    if (!data.prediction || gestureLocked) return;
+    gestureLocked = true;
+    const confidence = Number(data.confidence || 0);
+
+    if (confidence < CONFIDENCE_THRESHOLD) {
+      showUncertainResult(confidence);
+      return;
+    }
+
+    showPrediction(data.prediction, confidence);
+  });
+
+  socket.addEventListener('close', () => {
+    socketReady = false;
+    waitingForResponse = false;
+    setStatus('Восстанавливаем соединение…', 'connecting');
+    reconnectTimer = window.setTimeout(connectSocket, 2000);
+  });
+
+  socket.addEventListener('error', () => {
+    setStatus('Нет соединения с распознаванием', 'error');
+  });
 }
 
 function showPrediction(sign, confidence) {
-  const pct = Math.round(confidence * 100);
-  predLabel.textContent = sign.replace(/_/g, ' ');
-  confBar.style.width   = pct + '%';
-  confPct.textContent   = pct + '%';
-  viewSignLink.href     = `signs.html#${encodeURIComponent(sign)}`;
+  latestSign = sign;
+  const label = window.isoraSignLabel(sign);
+  const percent = Math.round(confidence * 100);
+
   predictionIdle.classList.add('hidden');
   predictionResult.classList.remove('hidden');
-  predLabel.style.animation = 'none';
-  predLabel.offsetHeight;
-  predLabel.style.animation = '';
-  addToHistory(sign, pct);
+  predictionResult.classList.remove('uncertain');
+  predLabel.textContent = label;
+  confPct.textContent = `${percent}%`;
+  confBar.style.width = `${percent}%`;
+  viewSignLink.href = `signs.html#${encodeURIComponent(sign)}`;
+  confirmBtn.disabled = false;
+  confirmStatus.textContent = '';
+
+  if (history[0]?.sign !== sign) {
+    history.unshift({ sign, label, confidence: percent });
+    if (history.length > 6) history.pop();
+    renderHistory();
+  }
 }
 
-function addToHistory(sign, pct) {
-  const first = historyList.firstElementChild;
-  if (first && first.dataset.sign === sign) return;
-  const li = document.createElement('li');
-  li.dataset.sign = sign;
-  li.innerHTML = `
-    <span class="history-sign">${sign.replace(/_/g, ' ')}</span>
-    <span class="history-conf">${pct}%</span>`;
-  historyList.insertBefore(li, historyList.firstChild);
-  while (historyList.children.length > 10) historyList.removeChild(historyList.lastChild);
+function showUncertainResult(confidence) {
+  latestSign = null;
+  const percent = Math.round(confidence * 100);
+  predictionIdle.classList.add('hidden');
+  predictionResult.classList.remove('hidden');
+  predictionResult.classList.add('uncertain');
+  predLabel.textContent = 'Не удалось распознать';
+  confPct.textContent = `${percent}%`;
+  confBar.style.width = `${percent}%`;
+  viewSignLink.href = 'signs.html';
+  confirmBtn.disabled = true;
 }
 
-// status / buffer bar
-function setStatus(text, state = 'inactive') {
-  statusText.textContent = text;
-  statusDot.className    = `status-dot ${state}`;
+function renderHistory() {
+  if (!history.length) {
+    historyList.innerHTML = '<span class="history-empty">История пока пуста</span>';
+    return;
+  }
+
+  historyList.innerHTML = history.map((item, index) => `
+    <div class="history-item">
+      <span>${history.length - index}</span>
+      <strong>${item.label}</strong>
+      <small>${item.confidence}%</small>
+    </div>
+  `).join('');
 }
 
-function updateBufferBar(size) {
-  bufferBar.style.width = Math.min(100, (size / BUFFER_SIZE) * 100) + '%';
-}
+clearBtn.addEventListener('click', () => {
+  history.length = 0;
+  latestSign = null;
+  renderHistory();
+  predictionResult.classList.add('hidden');
+  predictionResult.classList.remove('uncertain');
+  predictionIdle.classList.remove('hidden');
+  confirmBtn.disabled = true;
+  confirmStatus.textContent = '';
+});
 
-function resetBufferBar() {
-  bufferBar.style.width = '0%';
-}
-
-// WebSocket 
-function connectWS() {
-  ws = new WebSocket(WS_URL);
-  ws.onopen  = () => { wsReady = true; waitingForResponse = false; };
-  ws.onclose = () => {
-    wsReady = false; waitingForResponse = false;
-    setStatus('disconnected', 'error');
-    setTimeout(connectWS, 2000);
-  };
-  ws.onerror = () => {
-    wsReady = false; waitingForResponse = false;
-    setStatus('connection error', 'error');
-  };
-  ws.onmessage = (e) => {
-    waitingForResponse = false;
-    handleServerMessage(JSON.parse(e.data));
-  };
-}
-
-// landmark vector 
-const HAND_CONNECTIONS = [
-  [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
-  [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
-  [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]
-];
+confirmBtn.addEventListener('click', () => {
+  if (!latestSign) return;
+  confirmStatus.textContent = `Перевод «${window.isoraSignLabel(latestSign)}» подтверждён`;
+});
 
 function buildLandmarkVector(results) {
-  const vec = new Float32Array(1662);
-  let o = 0;
-  if (results.faceLandmarks)      for (const l of results.faceLandmarks)      { vec[o++]=l.x; vec[o++]=l.y; vec[o++]=l.z; }
-  else                            o += N_FACE * 3;
-  if (results.poseLandmarks)      for (const l of results.poseLandmarks)      { vec[o++]=l.x; vec[o++]=l.y; vec[o++]=l.z; vec[o++]=l.visibility??0; }
-  else                            o += N_POSE * 4;
-  if (results.rightHandLandmarks) for (const l of results.rightHandLandmarks) { vec[o++]=l.x; vec[o++]=l.y; vec[o++]=l.z; }
-  else                            o += N_HAND * 3;
-  if (results.leftHandLandmarks)  for (const l of results.leftHandLandmarks)  { vec[o++]=l.x; vec[o++]=l.y; vec[o++]=l.z; }
-  else                            o += N_HAND * 3;
-  return vec;
-}
+  const vector = new Float32Array((N_FACE * 3) + (N_POSE * 4) + (N_HAND * 3 * 2));
+  let offset = 0;
 
-function drawResults(results) {
-  ctx.clearRect(0, 0, overlay.width, overlay.height);
-  if (results.rightHandLandmarks) { drawConn(results.rightHandLandmarks,'#c8f135',2); drawDots(results.rightHandLandmarks,'#c8f135',3); }
-  if (results.leftHandLandmarks)  { drawConn(results.leftHandLandmarks, '#3de8c8',2); drawDots(results.leftHandLandmarks, '#3de8c8',3); }
-  if (results.faceLandmarks)      drawDots(results.faceLandmarks,'rgba(255,255,255,0.1)',1);
-}
-
-function drawConn(lms, color, lw) {
-  ctx.strokeStyle=color; ctx.lineWidth=lw;
-  for (const [a,b] of HAND_CONNECTIONS) {
-    if (!lms[a]||!lms[b]) continue;
-    ctx.beginPath();
-    ctx.moveTo(lms[a].x*overlay.width, lms[a].y*overlay.height);
-    ctx.lineTo(lms[b].x*overlay.width, lms[b].y*overlay.height);
-    ctx.stroke();
-  }
-}
-function drawDots(lms,color,r) {
-  ctx.fillStyle=color;
-  for (const l of lms) { ctx.beginPath(); ctx.arc(l.x*overlay.width,l.y*overlay.height,r,0,Math.PI*2); ctx.fill(); }
-}
-
-// MediaPipe 
-function initMediaPipe() {
-  const holistic = new Holistic({
-    locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1635989137/${f}`
-  });
-  holistic.setOptions({
-    modelComplexity: 0, smoothLandmarks: true,
-    enableSegmentation: false, smoothSegmentation: false,
-    refineFaceLandmarks: false,
-    minDetectionConfidence: 0.5, minTrackingConfidence: 0.5,
-  });
-  holistic.onResults(results => {
-    overlay.width  = video.videoWidth  || overlay.clientWidth;
-    overlay.height = video.videoHeight || overlay.clientHeight;
-    drawResults(results);
-    if (!wsReady || waitingForResponse) return;
-    const hasBothHands = results.rightHandLandmarks != null && results.leftHandLandmarks != null;
-    waitingForResponse = true;
-    ws.send(JSON.stringify({ landmarks: Array.from(buildLandmarkVector(results)), hasBothHands }));
-  });
-  navigator.mediaDevices
-    .getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } })
-    .then(stream => {
-      video.srcObject = stream;
-      video.onloadedmetadata = () => {
-        new Camera(video, { onFrame: async () => { await holistic.send({ image: video }); }, width:640, height:480 }).start();
-        setStatus('show both hands', 'inactive');
-      };
-    })
-    .catch(err => { console.error('[camera]', err); setStatus('camera access denied','error'); });
-}
-
-// boot 
-// admin logic 
-
-// role pill dropdown 
-let dropdownOpen = false;
-
-function openDropdown()  { dropdownOpen = true;  roleDropdown.classList.remove('hidden'); }
-function closeDropdown() { dropdownOpen = false; roleDropdown.classList.add('hidden'); }
-
-rolePill.addEventListener('click', e => {
-  e.stopPropagation();
-  dropdownOpen ? closeDropdown() : openDropdown();
-});
-
-// close when clicking anywhere outside
-document.addEventListener('click', e => {
-  if (dropdownOpen && !roleDropdown.contains(e.target)) closeDropdown();
-});
-
-// close on Escape
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeDropdown();
-    closeAdminModal();
-  }
-});
-
-switchToUser.addEventListener('click', () => {
-  closeDropdown();
-  if (isAdmin) exitAdminMode();
-});
-
-switchToAdmin.addEventListener('click', () => {
-  closeDropdown();
-  if (!isAdmin) openAdminModal();
-});
-
-// modal
-function openAdminModal() {
-  adminPasswordInput.value = '';
-  adminError.style.display = 'none';
-  adminModal.classList.add('open');
-  setTimeout(() => adminPasswordInput.focus(), 80);
-}
-function closeAdminModal() {
-  adminModal.classList.remove('open');
-  adminPasswordInput.value = '';
-  adminError.style.display = 'none';
-}
-
-async function attemptAdminLogin() {
-  const pw = adminPasswordInput.value.trim();
-  if (!pw) return;
-  adminLoginBtn.disabled = true;
-  adminError.style.display = 'none';
-  try {
-    const res = await fetch('/api/admin/verify', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ password: pw }),
-    });
-    if (!res.ok) {
-      adminError.style.display = 'block';
-      adminPasswordInput.value = '';
-      adminPasswordInput.classList.add('shake');
-      setTimeout(() => adminPasswordInput.classList.remove('shake'), 400);
-      return;
+  const append = (landmarks, count, dimensions) => {
+    for (let index = 0; index < count; index += 1) {
+      const point = landmarks?.[index];
+      if (point) {
+        vector[offset] = point.x || 0;
+        vector[offset + 1] = point.y || 0;
+        vector[offset + 2] = point.z || 0;
+        if (dimensions === 4) vector[offset + 3] = point.visibility ?? 0;
+      }
+      offset += dimensions;
     }
-    const data = await res.json();
-    adminToken = data.token;
-    isAdmin    = true;
-    closeAdminModal();
-    enterAdminMode();
-  } catch(e) {
-    adminError.style.display = 'block';
-  } finally {
-    adminLoginBtn.disabled = false;
+  };
+
+  append(results.faceLandmarks, N_FACE, 3);
+  append(results.poseLandmarks, N_POSE, 4);
+  append(results.rightHandLandmarks, N_HAND, 3);
+  append(results.leftHandLandmarks, N_HAND, 3);
+  return Array.from(vector);
+}
+
+function drawHand(landmarks, color) {
+  if (!landmarks) return;
+  context.strokeStyle = color;
+  context.fillStyle = '#ffc43d';
+  context.lineWidth = 3;
+  context.lineCap = 'round';
+
+  HAND_CONNECTIONS_LIST.forEach(([start, end]) => {
+    context.beginPath();
+    context.moveTo(landmarks[start].x * overlay.width, landmarks[start].y * overlay.height);
+    context.lineTo(landmarks[end].x * overlay.width, landmarks[end].y * overlay.height);
+    context.stroke();
+  });
+
+  landmarks.forEach((point) => {
+    context.beginPath();
+    context.arc(point.x * overlay.width, point.y * overlay.height, 3.5, 0, Math.PI * 2);
+    context.fill();
+  });
+}
+
+function onHolisticResults(results) {
+  const width = video.videoWidth || 640;
+  const height = video.videoHeight || 480;
+  if (overlay.width !== width || overlay.height !== height) {
+    overlay.width = width;
+    overlay.height = height;
   }
+
+  context.clearRect(0, 0, overlay.width, overlay.height);
+  drawHand(results.leftHandLandmarks, '#ffffff');
+  drawHand(results.rightHandLandmarks, '#ffffff');
+
+  if (!socketReady || waitingForResponse) return;
+  const hasBothHands = Boolean(results.leftHandLandmarks && results.rightHandLandmarks);
+  waitingForResponse = true;
+  socket.send(JSON.stringify({
+    landmarks: buildLandmarkVector(results),
+    hasBothHands
+  }));
 }
 
-function enterAdminMode() {
-  roleDot.className  = 'role-dot admin';
-  roleLabel.textContent = 'Admin';
-  adminControls.classList.remove('hidden');
-}
+async function startCamera() {
+  if (!window.Holistic || !window.Camera) {
+    cameraEmpty.querySelector('strong').textContent = 'Модуль камеры не загрузился';
+    cameraEmpty.querySelector('span').textContent = 'Проверьте интернет-соединение и обновите страницу';
+    setStatus('Не удалось загрузить MediaPipe', 'error');
+    return;
+  }
 
-function exitAdminMode() {
-  isAdmin = false; adminToken = null;
-  roleDot.className  = 'role-dot user';
-  roleLabel.textContent = 'User';
-  adminControls.classList.add('hidden');
-  document.querySelector('input[name="promptMode"][value="readonly"]').checked = true;
-  llmPrompt.readOnly = true;
-}
-
-async function savePrompt() {
-  if (!isAdmin || !adminToken) return;
-  const prompt = llmPrompt.value.trim();
-  if (!prompt) return;
-  savePromptBtn.disabled = true;
-  savePromptBtn.textContent = 'Saving…';
   try {
-    const res = await fetch('/api/admin/prompt', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ prompt, token: adminToken }),
+    const holistic = new Holistic({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`
     });
-    savePromptBtn.textContent = res.ok ? 'Saved ✓' : 'Error — try again';
-  } catch(e) {
-    savePromptBtn.textContent = 'Error — try again';
-  } finally {
-    savePromptBtn.disabled = false;
-    setTimeout(() => { savePromptBtn.textContent = 'Save prompt for all users'; }, 2000);
+    holistic.setOptions({
+      modelComplexity: 0,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      refineFaceLandmarks: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    holistic.onResults(onHolisticResults);
+
+    const camera = new Camera(video, {
+      onFrame: async () => holistic.send({ image: video }),
+      width: 640,
+      height: 480
+    });
+    await camera.start();
+    cameraEmpty.classList.add('hidden');
+  } catch (error) {
+    cameraEmpty.classList.remove('hidden');
+    cameraEmpty.querySelector('strong').textContent = 'Камера недоступна';
+    cameraEmpty.querySelector('span').textContent = 'Разрешите доступ в настройках браузера и обновите страницу';
+    setStatus('Нет доступа к камере', 'error');
   }
 }
 
-adminModalClose.addEventListener('click', closeAdminModal);
-adminModal.addEventListener('click', e => { if (e.target === adminModal) closeAdminModal(); });
-savePromptBtn.addEventListener('click', savePrompt);
-adminLoginBtn.addEventListener('click', attemptAdminLogin);
-adminPasswordInput.addEventListener('keydown', e => { if (e.key === 'Enter') attemptAdminLogin(); });
+function renderReplySequence() {
+  if (!replySigns.length) {
+    replySequence.innerHTML = '<span>Выберите фразу выше</span>';
+  } else {
+    replySequence.innerHTML = replySigns.map((sign, index) => `
+      <button type="button" data-remove-index="${index}" aria-label="Удалить ${window.isoraSignLabel(sign)}">
+        ${window.isoraSignLabel(sign)}<b aria-hidden="true">×</b>
+      </button>
+    `).join('');
+  }
 
-// init
-setStatus('starting…', 'inactive');
-loadConfig();
-connectWS();
-initMediaPipe();
+  generateReplyBtn.disabled = !replySigns.length;
+  clearReplyBtn.disabled = !replySigns.length;
+}
+
+quickReplies.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-sign]');
+  if (!button) return;
+  const sign = button.dataset.sign;
+  if (replySigns.length >= 8) {
+    replyStatus.textContent = 'Для демонстрации можно выбрать до 8 жестов';
+    return;
+  }
+  replySigns.push(sign);
+  replyStatus.textContent = '';
+  renderReplySequence();
+});
+
+replySequence.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-remove-index]');
+  if (!button) return;
+  replySigns.splice(Number(button.dataset.removeIndex), 1);
+  renderReplySequence();
+});
+
+clearReplyBtn.addEventListener('click', () => {
+  replySigns.length = 0;
+  replyStatus.textContent = '';
+  renderReplySequence();
+});
+
+generateReplyBtn.addEventListener('click', async () => {
+  if (!replySigns.length) return;
+  generateReplyBtn.disabled = true;
+  generateReplyBtn.classList.add('loading');
+  replyStatus.textContent = 'Собираем видеожесты…';
+
+  try {
+    const response = await fetch('/api/produce-sign-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signs: replySigns })
+    });
+    if (!response.ok) {
+      const details = await response.json().catch(() => ({}));
+      throw new Error(details.detail || 'Не удалось собрать ответ');
+    }
+
+    if (currentVideoUrl) URL.revokeObjectURL(currentVideoUrl);
+    currentVideoUrl = URL.createObjectURL(await response.blob());
+    replyVideo.src = currentVideoUrl;
+    avatarPlaceholder.classList.add('hidden');
+    replyVideo.classList.remove('hidden');
+    replyStatus.textContent = 'Ответ готов';
+    await replyVideo.play().catch(() => {});
+  } catch (error) {
+    replyStatus.textContent = error.message;
+  } finally {
+    generateReplyBtn.classList.remove('loading');
+    generateReplyBtn.disabled = !replySigns.length;
+  }
+});
+
+connectSocket();
+startCamera();

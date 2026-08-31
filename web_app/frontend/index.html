@@ -1,181 +1,152 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UzSLR — Uzbek Sign Language Recognition</title>
+  <meta name="theme-color" content="#130b21" />
+  <title>Isora-AI — переводчик жестового языка</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Azeret+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-
-  <nav class="nav">
-    <div class="nav-logo">UzSLR</div>
-    <div class="nav-links">
-      <a href="index.html" class="nav-link active">Recognise</a>
-      <a href="signs.html" class="nav-link">50 Signs</a>
-      <a href="sign_production.html" class="nav-link">Produce</a>
-      <!-- role pill: single button, dropdown on click -->
-      <div class="role-wrap" id="roleWrap">
-        <button class="role-pill" id="rolePill">
-          <span class="role-dot user" id="roleDot"></span>
-          <span id="roleLabel">User</span>
-          <span class="role-chevron">&#9660;</span>
-        </button>
-        <div class="role-dropdown hidden" id="roleDropdown">
-          <button class="role-option" id="switchToUser">User</button>
-          <button class="role-option" id="switchToAdmin">Admin</button>
-        </div>
-      </div>
+<body class="isora-page">
+  <nav class="isora-nav" aria-label="Основная навигация">
+    <a class="isora-brand" href="index.html" aria-label="Isora-AI — главная">
+      <svg class="brand-mark" viewBox="0 0 56 56" aria-hidden="true">
+        <path d="M10 7h36a7 7 0 0 1 7 7v23a7 7 0 0 1-7 7H28L16 52v-8h-6a7 7 0 0 1-7-7V14a7 7 0 0 1 7-7Z" fill="currentColor"/>
+        <path d="M15 25v7M23 19v19M31 15v27M39 20v17M47 25v7" fill="none" stroke="#130b21" stroke-linecap="round" stroke-width="4"/>
+      </svg>
+      <span>isora-ai</span>
+    </a>
+    <div class="isora-nav-links">
+      <a href="#dialog" class="isora-nav-link active">Диалог</a>
+      <a href="signs.html" class="isora-nav-link">50 жестов</a>
+      <a href="sign_production.html" class="isora-nav-link">Ответ жестами</a>
+      <span class="pilot-badge">Пилотная версия</span>
     </div>
   </nav>
 
-  <main class="main">
-
-    <!-- ── left: camera feed ── -->
-    <section class="camera-section">
-      <div class="camera-wrapper" id="cameraWrapper">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="overlay"></canvas>
-        <div class="camera-overlay-ui">
-          <div class="status-pill" id="statusPill">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">starting camera…</span>
-          </div>
-          <div class="buffer-bar-wrap">
-            <div class="buffer-bar" id="bufferBar"></div>
-          </div>
-        </div>
+  <main class="isora-shell">
+    <section class="isora-hero" aria-labelledby="heroTitle">
+      <div>
+        <p class="eyebrow">Цифровой переводчик жестового языка</p>
+        <h1 id="heroTitle">Разговор без<br><span>посредников</span></h1>
+        <p class="hero-copy">Покажите жест в камеру — Isora-AI распознает его и выведет перевод. Сотрудник может ответить готовой фразой на жестовом языке.</p>
       </div>
-      <div class="camera-hint">
-        Show <strong>both hands</strong> to begin recognition
+      <div class="privacy-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.8 8.8 7 10 4.2-1.2 7-5.4 7-10V6l-7-3Zm0 4a3 3 0 0 1 3 3v1h1v6H8v-6h1v-1a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v1h2v-1a1 1 0 0 0-1-1Z" fill="currentColor"/></svg>
+        <div><strong>Видео не сохраняется</strong><span>Обработка кадров происходит только во время разговора</span></div>
       </div>
     </section>
 
-    <!-- ── right: prediction + LLM panel ── -->
-    <section class="prediction-section">
+    <section class="journey" aria-label="Как работает Isora-AI">
+      <article><span>01</span><div><strong>Камера видит жест</strong><small>MediaPipe отслеживает движения</small></div></article>
+      <article><span>02</span><div><strong>AI распознаёт</strong><small>Перевод появляется в диалоге</small></div></article>
+      <article><span>03</span><div><strong>Сотрудник отвечает</strong><small>Выбирает понятную фразу</small></div></article>
+      <article><span>04</span><div><strong>Экран показывает жест</strong><small>Ответ собирается из видеожестов</small></div></article>
+    </section>
 
-      <!-- prediction card -->
-      <div class="prediction-card" id="predictionCard">
-        <div class="prediction-idle" id="predictionIdle">
-          <div class="idle-icon">✋🤟</div>
-          <p>Waiting for sign…</p>
-        </div>
-        <div class="prediction-result hidden" id="predictionResult">
-          <div class="pred-label" id="predLabel">—</div>
-          <div class="confidence-wrap">
-            <div class="confidence-bar-bg">
-              <div class="confidence-bar-fill" id="confBar"></div>
-            </div>
-            <span class="confidence-pct" id="confPct">0%</span>
-          </div>
-          <a class="view-sign-link" id="viewSignLink" href="signs.html" target="_blank">
-            see how this sign looks →
-          </a>
-        </div>
+    <section class="dialog-section" id="dialog" aria-labelledby="dialogTitle">
+      <div class="section-heading">
+        <div><p class="eyebrow">Живой прототип</p><h2 id="dialogTitle">Начните диалог</h2></div>
+        <p>Встаньте по центру кадра и покажите обе руки. Для следующего жеста ненадолго опустите руки.</p>
       </div>
 
-      <!-- recent predictions history -->
-      <div class="history-wrap">
-        <div class="history-title">recent predictions</div>
-        <ol class="history-list" id="historyList"></ol>
+      <div class="dialog-grid">
+        <article class="isora-card camera-card">
+          <header class="card-head">
+            <div><span class="card-step">1</span><div><h3>Покажите жест</h3><p>Камера распознает движение</p></div></div>
+            <span class="live-badge"><i></i> LIVE</span>
+          </header>
+          <div class="camera-wrapper" id="cameraWrapper">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
+            <div class="camera-empty" id="cameraEmpty">
+              <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M18 22h28a6 6 0 0 1 6 6v19a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V28a6 6 0 0 1 6-6Zm14 7a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM22 13h20l4 9H18l4-9Z" fill="currentColor"/></svg>
+              <strong>Разрешите доступ к камере</strong>
+              <span>Isora-AI начнёт работу автоматически</span>
+            </div>
+            <div class="camera-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="camera-status" id="statusPill" role="status" aria-live="polite">
+            <span class="status-dot connecting" id="statusDot"></span>
+            <span id="statusText">Подключаем распознавание…</span>
+            <div class="buffer-track" aria-hidden="true"><div class="buffer-fill" id="bufferBar"></div></div>
+          </div>
+        </article>
+
+        <article class="isora-card translation-card" id="predictionCard">
+          <header class="card-head">
+            <div><span class="card-step">2</span><div><h3>Перевод</h3><p>Результат распознавания</p></div></div>
+            <button class="icon-button" id="clearBtn" type="button" aria-label="Очистить историю" title="Очистить историю">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>
+            </button>
+          </header>
+          <div class="prediction-idle" id="predictionIdle">
+            <div class="sound-orbit"><i></i><i></i><i></i><i></i><i></i></div>
+            <strong>Жду жест</strong>
+            <span>Покажите один из 50 жестов</span>
+          </div>
+          <div class="prediction-result hidden" id="predictionResult">
+            <span class="result-kicker">Распознано</span>
+            <strong id="predLabel">—</strong>
+            <div class="confidence-row"><span>Уверенность</span><b id="confPct">0%</b></div>
+            <div class="confidence-track"><div id="confBar"></div></div>
+            <a id="viewSignLink" class="text-link" href="signs.html">Посмотреть эталонный жест</a>
+          </div>
+          <div class="history-block">
+            <div class="history-title"><span>История диалога</span><small>последние жесты</small></div>
+            <div class="history-list" id="historyList"><span class="history-empty">История пока пуста</span></div>
+          </div>
+          <button class="primary-button" id="confirmBtn" type="button" disabled>Подтвердить перевод</button>
+          <p class="confirm-status" id="confirmStatus" aria-live="polite"></p>
+        </article>
+
+        <article class="isora-card reply-card">
+          <header class="card-head">
+            <div><span class="card-step">3</span><div><h3>Ответ жестами</h3><p>Соберите короткую фразу</p></div></div>
+          </header>
+          <div class="quick-replies" id="quickReplies" aria-label="Быстрые фразы">
+            <button type="button" data-sign="assalomu_alaykum">Здравствуйте</button>
+            <button type="button" data-sign="iltimos">Пожалуйста</button>
+            <button type="button" data-sign="yordam_berish">Помочь</button>
+            <button type="button" data-sign="javob">Ответ</button>
+            <button type="button" data-sign="ochish">Открыть</button>
+            <button type="button" data-sign="yopish">Закрыть</button>
+          </div>
+          <div class="reply-sequence" id="replySequence"><span>Выберите фразу выше</span></div>
+          <div class="reply-actions">
+            <button class="primary-button" id="generateReplyBtn" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5V7Z" fill="currentColor"/></svg>
+              Показать ответ
+            </button>
+            <button class="secondary-button" id="clearReplyBtn" type="button" disabled>Очистить</button>
+          </div>
+          <div class="avatar-output" id="avatarOutput">
+            <div class="avatar-placeholder" id="avatarPlaceholder">
+              <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8a11 11 0 1 1 0 22 11 11 0 0 1 0-22Zm-19 45c2-11 9-17 19-17s17 6 19 17H13Z" fill="currentColor"/></svg>
+              <div><strong>Видеожесты ответа</strong><span>Собранная фраза появится здесь</span></div>
+            </div>
+            <video id="replyVideo" class="hidden" controls playsinline></video>
+          </div>
+          <p class="reply-status" id="replyStatus" aria-live="polite"></p>
+        </article>
       </div>
+    </section>
 
-      <!-- ── LLM panel (shown only when server has LLM_ENABLED=true) ── -->
-      <div class="llm-panel" id="llmPanel" style="display:none">
-
-        <!-- header row: toggle + tooltip -->
-        <div class="llm-header">
-          <div class="llm-toggle-row">
-            <label class="toggle-switch">
-              <input type="checkbox" id="llmToggle" />
-              <span class="toggle-track"></span>
-            </label>
-            <span class="llm-label">LLM Mode</span>
-            <div class="tooltip-wrap">
-              <span class="tooltip-icon">?</span>
-              <div class="tooltip-box">
-                LLM Mode collects each predicted sign and uses a local Uzbek
-                language model to form a sentence from them.<br><br>
-                <strong>Note:</strong> the model may make grammatical errors.
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- controls (dimmed when toggle is OFF) -->
-        <div class="llm-controls" id="llmControls">
-
-          <!-- admin-only controls: model selector + prompt editor -->
-          <div class="admin-controls hidden" id="adminControls">
-            <div class="llm-field">
-              <label class="llm-field-label">Model</label>
-              <select class="llm-select" id="llmModelSelect"></select>
-            </div>
-            <div class="llm-field">
-              <label class="llm-field-label">System Prompt</label>
-              <div class="prompt-mode-row">
-                <label class="radio-label">
-                  <input type="radio" name="promptMode" value="readonly" checked /> Read-only
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="promptMode" value="edit" /> Edit
-                </label>
-                <button class="reset-btn" id="resetPromptBtn">Reset to default</button>
-              </div>
-              <textarea class="llm-prompt" id="llmPrompt" readonly></textarea>
-              <button class="save-prompt-btn" id="savePromptBtn">Save prompt for all users</button>
-            </div>
-          </div>
-
-          <!-- collected signs -->
-          <div class="llm-field">
-            <label class="llm-field-label">
-              Collected signs
-              <button class="clear-signs-btn" id="clearSignsBtn" title="Clear">✕</button>
-            </label>
-            <div class="collected-signs" id="collectedSigns">
-              <span class="collected-empty">No signs collected yet</span>
-            </div>
-          </div>
-
-          <!-- sentence output -->
-          <div class="llm-output-wrap" id="llmOutputWrap">
-            <div class="llm-output-label">Formed sentence</div>
-            <div class="llm-output" id="llmOutput"></div>
-            <div class="llm-status" id="llmStatus"></div>
-          </div>
-
-        </div><!-- /llm-controls -->
-      </div><!-- /llm-panel -->
-
+    <section class="prototype-note">
+      <span>Текущая версия</span>
+      <p>Прототип распознаёт 50 изолированных жестов узбекского жестового языка. Перевод непрерывной речи, озвучивание и полноценный 3D‑аватар — следующие этапы продукта.</p>
     </section>
   </main>
 
-  <!-- MediaPipe -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1635989137/holistic.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1640029074/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
-  <!-- admin password modal -->
-  <div class="modal-backdrop" id="adminModal">
-    <div class="modal admin-modal">
-      <button class="modal-close" id="adminModalClose">&#x2715;</button>
-      <div class="modal-title">Admin login</div>
-      <div class="admin-modal-body">
-        <input
-          class="admin-password-input"
-          id="adminPasswordInput"
-          type="password"
-          placeholder="Enter password"
-          autocomplete="new-password"
-        />
-        <p class="admin-error" id="adminError" style="display:none">Incorrect password</p>
-        <button class="admin-login-btn" id="adminLoginBtn">Login</button>
-      </div>
-    </div>
-  </div>
+  <footer class="isora-footer"><span>isora-ai</span><p>Делаем коммуникацию доступной</p></footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="labels.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
