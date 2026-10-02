@@ -103,5 +103,5 @@ Endi:"""
 
 
 # Admin mode unlocks model selector + prompt editor in the UI.
-ADMIN_PASSWORD = "uzslr-admin-2024"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 

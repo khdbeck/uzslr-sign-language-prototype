@@ -115,7 +115,9 @@ class AdminVerifyRequest(BaseModel):
 
 @app.post("/api/admin/verify")
 async def admin_verify(req: AdminVerifyRequest):
-    if req.password != ADMIN_PASSWORD:
+    if not ADMIN_PASSWORD:
+        raise HTTPException(status_code=503, detail="Admin access is disabled")
+    if not _secrets.compare_digest(req.password.encode("utf-8"), ADMIN_PASSWORD.encode("utf-8")):
         raise HTTPException(status_code=401, detail="Incorrect password")
     token = _secrets.token_hex(32)
     _admin_tokens.add(token)
