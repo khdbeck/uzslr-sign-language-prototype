@@ -1,0 +1,9 @@
+{
+  "model": "MViTv2-small-32-2",
+  "modelUrl": "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/slovo/models/mvit/onnx/mvit32-2.onnx",
+  "sha256": "3414b1cca3619ba9a92994c261505d14361657fcc7a66f5a13696de526bc4975",
+  "labelUrl": "https://raw.githubusercontent.com/hukenovs/slovo/14289a822a51faaecf65b5f228264b05db3e380e/constants.py",
+  "classes": 1001,
+  "reportedTestMeanAccuracy": 64.09,
+  "source": "https://github.com/hukenovs/slovo"
+}

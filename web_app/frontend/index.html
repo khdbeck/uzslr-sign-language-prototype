@@ -22,7 +22,8 @@
     </a>
     <div class="isora-nav-links">
       <a href="#dialog" class="isora-nav-link active">Muloqot</a>
-      <a href="signs.html" class="isora-nav-link">50 ta ishora</a>
+      <a href="slovo.html" class="isora-nav-link">Ishoralar lug‘ati</a>
+      <a href="signs.html" class="isora-nav-link">Videoishoralar</a>
       <a href="sign_production.html" class="isora-nav-link">Ishorada javob</a>
       <span class="pilot-badge">Sinov versiyasi</span>
     </div>
@@ -42,7 +43,7 @@
     </section>
 
     <section class="journey" aria-label="Isora-AI qanday ishlaydi">
-      <article><span>01</span><div><strong>Kamera ishorani ko'radi</strong><small>MediaPipe harakatlarni kuzatadi</small></div></article>
+      <article><span>01</span><div><strong>Kamera ishorani ko'radi</strong><small>Video orqali harakat kuzatiladi</small></div></article>
       <article><span>02</span><div><strong>AI taniydi</strong><small>Tarjima muloqot oynasida ko'rinadi</small></div></article>
       <article><span>03</span><div><strong>Xodim javob beradi</strong><small>Tushunarli iborani tanlaydi</small></div></article>
       <article><span>04</span><div><strong>Ekran ishorani ko'rsatadi</strong><small>Javob videoishoralardan yig'iladi</small></div></article>
@@ -51,7 +52,7 @@
     <section class="dialog-section" id="dialog" aria-labelledby="dialogTitle">
       <div class="section-heading">
         <div><p class="eyebrow">Ishlaydigan prototip</p><h2 id="dialogTitle">Muloqotni boshlang</h2></div>
-        <p>Kadr markazida turing va ikkala qo'lingizni ko'rsating. Keyingi ishora uchun qo'llaringizni qisqa vaqtga tushiring.</p>
+        <p>Kadrda yuzingiz, gavdangiz va qo'llaringiz ko'rinsin. Bitta ishorani taxminan 2 soniyada ko'rsating. Natijalar rus tilida chiqadi.</p>
       </div>
 
       <div class="dialog-grid">
@@ -75,6 +76,12 @@
             <span id="statusText">Tanib olish tizimiga ulanmoqda…</span>
             <div class="buffer-track" aria-hidden="true"><div class="buffer-fill" id="bufferBar"></div></div>
           </div>
+          <div class="video-test">
+            <label for="videoFile">Yoki videoda tekshiring (50 MB gacha)</label>
+            <input id="videoFile" type="file" accept=".mp4,.webm,.mov,.avi" />
+            <button id="resumeCameraBtn" class="secondary-button hidden" type="button">Kameraga qaytish</button>
+            <p id="videoTestStatus" role="status" aria-live="polite"></p>
+          </div>
         </article>
 
         <article class="isora-card translation-card" id="predictionCard">
@@ -87,15 +94,16 @@
           <div class="prediction-idle" id="predictionIdle">
             <div class="sound-orbit"><i></i><i></i><i></i><i></i><i></i></div>
             <strong>Ishorani kutyapman</strong>
-            <span>50 ta ishoradan birini ko'rsating</span>
+            <span>Rus imo-ishora tili lug‘atidagi ishoralardan birini ko'rsating</span>
           </div>
           <div class="prediction-result hidden" id="predictionResult">
-            <span class="result-kicker">Tanildi</span>
+            <span class="result-kicker" id="resultKicker">Tanildi</span>
             <strong id="predLabel">—</strong>
             <div class="confidence-row"><span>Ishonchlilik</span><b id="confPct">0%</b></div>
             <div class="confidence-track"><div id="confBar"></div></div>
-            <a id="viewSignLink" class="text-link" href="signs.html">Namunaviy ishorani ko'rish</a>
+            <a id="viewSignLink" class="text-link" href="slovo.html">Ishoralar lug‘atida ko‘rish</a>
           </div>
+          <details class="recognition-candidates"><summary>Eng ehtimolli 5 ta natija</summary><ol id="top5List"></ol></details>
           <div class="history-block">
             <div class="history-title"><span>Muloqot tarixi</span><small>so'nggi ishoralar</small></div>
             <div class="history-list" id="historyList"><span class="history-empty">Tarix hozircha bo'sh</span></div>
@@ -138,14 +146,12 @@
 
     <section class="prototype-note">
       <span>Joriy versiya</span>
-      <p>Prototip o'zbek imo-ishora tilidagi 50 ta alohida ishorani taniydi. Uzluksiz nutq tarjimasi, ovozlashtirish va to'liq 3D-avatar — mahsulotning keyingi bosqichlari.</p>
+      <p>Slovo modeli rus imo-ishora tilidagi alohida ishoralarni taniydi. Natijalar rus tilida; o'zbek ishoralaridagi aniqlik hali tekshirilmagan. Javob uchun mavjud o'zbek videoishoralari ishlatiladi.</p>
     </section>
   </main>
 
   <footer class="isora-footer"><span>isora-ai</span><p>Muloqotni hammaga qulay qilamiz</p></footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
   <script src="labels.js"></script>
   <script src="app.js"></script>
 </body>

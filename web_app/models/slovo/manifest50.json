@@ -1,0 +1,29 @@
+{
+  "model": "MViTv2-small-32-2 fine-tuned on 50 frequent Slovo words + no_event",
+  "base": "https://github.com/hukenovs/slovo (mvit32-2.pt)",
+  "training": "training/slovo50",
+  "sha256": "b8ecd040222052f728fdcb4e603019746359a792b64ab3baa7f38a74211a2bfd",
+  "classes": 51,
+  "testClips": 350,
+  "officialTest": {
+    "official-1000": {
+      "top1": 0.7029,
+      "top5": 0.9371,
+      "wordTop1": 0.616,
+      "noEventTop1": 0.92
+    },
+    "official-restricted": {
+      "top1": 0.9371,
+      "top5": 0.9943,
+      "wordTop1": 0.924,
+      "noEventTop1": 0.97
+    },
+    "finetuned": {
+      "top1": 0.9457,
+      "top5": 0.9886,
+      "wordTop1": 0.928,
+      "noEventTop1": 0.99
+    }
+  },
+  "epochs": 10
+}

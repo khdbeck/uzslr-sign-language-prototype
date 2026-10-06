@@ -1,195 +1,54 @@
-# UzSLR — Uzbek Sign Language Recognition
+# Isora-AI — Slovo recognition
 
-A real-time web application for recognising **50 isolated Uzbek signs** using a webcam. An optional LLM mode collects recognised signs and attempts to form grammatically correct Uzbek sentences using a locally-running language model.
+The web app recognizes Russian Sign Language with **Slovo MViTv2-small-32-2** RGB models. By default it uses **slovo50**: the official model fine-tuned on the **50 most frequent words** plus `no_event` (training code, word list and test results: [training/slovo50](../training/slovo50/README.md)). If `web_app/models/slovo/slovo50.onnx` is missing, or with `SLOVO_MODEL=slovo1000`, it uses the official model with **1,000 signs** plus `no_event`. Russian labels are shown directly; Uzbek recognition accuracy is unmeasured. The former 50-sign recognition backend and weights were removed. Existing Uzbek reference videos and reply generation remain available separately.
 
-> Docker Image: https://hub.docker.com/repository/docker/00015775/uzslr-web
+## Local startup
 
----
+Python 3.12 is recommended. From uzslr-isolated-dynamic:
 
-## Demo
-
-| Sign recognition | LLM sentence formation |
-|---|---|
-| Show both hands to the camera → the model processes 32 frames and predicts the sign | Sign multiple words → hide hands → a sentence is formed automatically |
-
----
-
-## Features
-
-- **Real-time recognition** of 50 Uzbek signs via webcam
-- **MediaPipe Holistic** landmark extraction running entirely in the browser
-- **PyTorch model** for sign classification
-- **50 Signs gallery** with reference GIFs for every sign, searchable and with fullscreen view
-- **LLM Mode** *(optional)* — collects signs and forms Uzbek sentences using [alloma-1b-q4](https://ollama.com/kmamaroziqov/alloma-1b-q4) running locally via Ollama
-- Fully **offline** after first load — no external API calls, no data sent anywhere
-
----
-
-## Quick start — Docker (recommended)
-
-### Without LLM (sign recognition only)
-
-```bash
-docker pull 00015775/uzslr-web:1.0.0 
-docker run -p 7860:7860 00015775/uzslr-web:1.0.0 
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r web_app/requirements-local.txt
+.venv\Scripts\python.exe -m web_app.setup_slovo
+.venv\Scripts\python.exe -m uvicorn web_app.backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open [http://localhost:7860](http://localhost:7860)
+Open http://localhost:8000. On this workstation the environment and weights are installed; ./start-web.ps1 starts the server again.
 
-### With LLM (sign recognition + sentence formation)
+Windows uses ONNX Runtime DirectML with a high-performance GPU preference; other platforms use CPU. Set SLOVO_DEVICE=cpu to force CPU. Do not install different ONNX Runtime distributions together in one environment.
 
-```bash
-docker pull 00015775/uzslr-web:2.0.0 
+Setup downloads ~141 MB, verifies SHA-256, and reads ordered class labels from a pinned upstream commit without executing downloaded Python. Weights are ignored by Git. Setup does not download the ~16 GB dataset.
 
-# on cpu
-docker run -p 7860:7860 00015775/uzslr-web:2.0.0 
+## Recognition
 
-# on gpu
-docker run --gpus all -p 7860:7860 00015775/uzslr-web:2.0.0 
+- Webcam: keep face, upper body and hands visible; perform one sign in about two seconds. Single-handed signs work. Original unmirrored JPEGs are sent to the local backend at 15 FPS (30 FPS source with frame interval 2).
+- Each prediction uses 32 RGB frames with official aspect-preserving 224px padding and normalization. A fresh clip starts after each prediction to avoid temporal gaps on slow CPUs.
+- Video test: select MP4/WebM/MOV/AVI under the camera, up to 50 MB. Camera inference pauses. Use “Kameraga qaytish” to resume. Uploaded temporary files are deleted after inference.
+- Results show the most likely sign at confidence of 10% or higher; below 10% the result is uncertain. Five candidates remain visible. Confidence is not test accuracy. The no_event class is displayed as “Ishora yo‘q” and never enters word history.
+- /slovo.html lists the labels of the active model (50 or 1,000). /signs.html is the separate gallery of existing Uzbek reply/reference videos.
+
+## Official test evaluation
+
+Download the **trimmed** dataset from https://github.com/hukenovs/slovo. Keep official annotations.csv and the train=False split. Run from this repository:
+
+```powershell
+.venv\Scripts\python.exe -m web_app.evaluate_slovo --annotations C:\datasets\slovo\annotations.csv --videos C:\datasets\slovo --output slovo-test-results.json
 ```
 
-Open [http://localhost:7860](http://localhost:7860) — the **LLM Mode** toggle will be visible in the right panel.
+The command evaluates only test videos, does not train/tune, and fails on missing samples. --limit 10 explicitly runs the first ten rows. --sample-size 500 --seed 42 selects a reproducible uniform random subset without replacement. Use --endpoint http://127.0.0.1:8000 to test the running application's video endpoint with exactly the same preprocessing as uploads. Reports contain per-video Top-1, Top-5, mean accuracy over represented classes, class coverage, timing and sampling metadata. Subset results must not be presented as full test accuracy.
 
-> **Note:** The LLM image is ~7 GB due to the bundled Uzbek language model. First pull may take a few minutes.
+Upstream reports **64.09% mean accuracy**. This app has not reproduced it on the complete 5,100-video test set. Integration tests exercise actual ONNX inference, binary JPEG WebSocket transport and video uploads, not benchmark accuracy.
 
----
+On 2026-10-06 the running application was evaluated on a fixed random sample of **500 official test videos** (seed 42, 399 represented classes). Measured Top-1: **324/500 = 64.8%**; Top-5: **449/500 = 89.8%**; mean accuracy over observed classes: **64.35%**. On 178 clips from users entirely absent in train, Top-1 was **61.24%**. This remains a subset evaluation. The reports, predictions, annotations and downloaded test clips are in the parent workspace's tmp/slovo-evaluation directory, with methodology in REPORT.md.
 
-## Quick start — Local Python (no Docker)
+The existing Uzbek reference clips performed much worse: strict comparison against predeclared Russian semantic equivalents gave **3/21 = 14.3%** Top-1 and **7/21 = 33.3%** Top-5 on gestures with a matching class. Another 28 of the 49 gesture names have no corresponding class in Slovo; the separate rest clip was recognized as no_event. This local diagnostic is not a labelled RSL benchmark and sign variants may differ. Twenty test clips sent through browser-equivalent 640px JPEG WebSocket transport matched the video endpoint's first prediction in all twenty cases.
 
-### Prerequisites
+## Docker
 
-- Python 3.9
-- [Ollama](https://ollama.com) installed *(only needed for LLM mode)*
+Run python -m web_app.setup_slovo before creating an image. The existing web_app/Dockerfile and Dockerfile.llm include Slovo assets and run CPU inference in Linux; the LLM image retains its optional Ollama integration.
 
-### 1. Clone and install
+## Sources
 
-```bash
-git clone https://github.com/00015775/uzslr-isolated-dynamic.git
-
-cd uzslr-isolated-dynamic
-# create and activate the environment
-conda env create -f .web_app/environment-web-uzslr-signs.yml
-
-conda activate web-uzslr-signs
-```
-
-### 2. Run — sign recognition only
-
-```bash
-# from root directory
-uvicorn web_app.backend.main:app --port 8000
-```
-
-Open [http://localhost:8000](http://localhost:8000)
-
-### 3. Run — with LLM mode enabled
-
-In one terminal, start Ollama:
-```bash
-# if ollama not available locally, then download
-curl -fsSL https://ollama.com/install.sh | sh
-
-# pull llm model
-ollama pull kmamaroziqov/alloma-1b-q4   # one-time download (~807 MB)
-ollama pull kmamaroziqov/alloma-3b-q4   # one-time download (~2 GB)
-
-ollama serve
-
-# need to move to uzslr-isolated-dynamic/web_app/ollama-models
-mkdir -p web_app/ollama-models
-cp -r ~/.ollama/models/blobs     web_app/ollama-models/blobs
-cp -r ~/.ollama/models/manifests web_app/ollama-models/manifests
-```
-
-In another terminal:
-```bash
-# from root directory
-LLM_ENABLED=true uvicorn web_app.backend.main:app --port 8000
-```
-
-Open [http://localhost:8000](http://localhost:8000) — the **LLM Mode** toggle will appear.
-
----
-
-## How it works
-
-```
-Browser                          Server (FastAPI)
-───────                          ────────────────
-Webcam frames
-  → MediaPipe Holistic           
-  → 1662-dim landmark vector  →  WebSocket /ws/infer
-                                   → preprocessing (centering, normalisation,
-                                                    velocity, acceleration)
-                                   → PyTorch model (32 frames → 1 prediction)
-                               ←  predicted sign + confidence
-
-[LLM mode only]
-Collected signs list         →  POST /api/form-sentence
-                                   → Ollama (alloma-1b-q4)
-                             ←  formed Uzbek sentence
-```
-
-### Recognised signs (50 total)
-
-`assalomu_alaykum` · `bahor` · `birga` · `bo'sh` · `bosh_kiyim` · `boshlanishi` · `bozor` · `eshik` · `futbol` · `iltimos` · `internet` · `javob` · `jismoniy_tarbiya` · `karam` · `kartoshka` · `kichik` · `kitob` · `ko'prik` · `likopcha` · `maktab` · `mehmonxona` · `mehribon` · `metro` · `musiqa` · `o'simlik_yog'i` · `o'ynash` · `ochish` · `ot` · `ovqat_tayyorlash` · `oxiri` · `poezd` · `pomidor` · `qidirish` · `qish` · `qo'ziqorin` · `qor` · `qorong'i` · `quyon` · `restoran` · `sariyog'` · `shokolad` · `sovun` · `stakan` · `televizor` · `tosh` · `toza` · `turish` · `yomg'ir` · `yopish` · `yordam_berish`
-
----
-
-## Project structure
-
-```
-uzslr-isolated-dynamic/
-├── web_app/
-│   ├── backend/
-│   │   ├── main.py          # FastAPI app — WebSocket inference + REST endpoints
-│   │   ├── config.py        # Model config, LLM settings, sign labels
-│   │   ├── preprocess.py    # Landmark preprocessing pipeline
-│   │   ├── model.py         # PyTorch transformer model definition
-│   │   └── llm_client.py    # Ollama subprocess management + sentence formation
-│   ├── frontend/
-│   │   ├── index.html       # Main recognition page
-│   │   ├── signs.html       # 50 Signs gallery with fullscreen modal
-│   │   ├── app.js           # MediaPipe + WebSocket + LLM UI logic
-│   │   └── style.css        # Dark industrial UI theme
-│   ├── best_model.pth       # Trained sign recognition model weights
-│   ├── Dockerfile           # Base image — sign recognition only
-│   ├── Dockerfile.llm       # LLM image — includes Ollama + alloma-1b-q4
-│   ├── requirements.txt     # Python dependencies
-│   ├── ollama-models/       # .gitignored, model lives here
-│   └── README.md
-...
-```
-
----
-
-## Building Docker images yourself
-
-### Base image (no LLM)
-
-```bash
-# from repo root
-docker build --platform=linux/amd64 -f web_app/Dockerfile -t uzslr:latest .
-```
-
-### LLM image
-
-```bash
-# copy Ollama model cache (must have pulled the model first)
-mkdir -p web_app/ollama-models
-cp -r ~/.ollama/models/blobs     web_app/ollama-models/blobs
-cp -r ~/.ollama/models/manifests web_app/ollama-models/manifests
-
-docker build --platform=linux/amd64 -f web_app/Dockerfile.llm -t uzslr:llm .
-```
-
-> **Apple Silicon (M1/M2/M3):** The `--platform=linux/amd64` flag is required when building for deployment on amd64 servers. Docker Desktop handles the cross-compilation via Rosetta.
-
----
-
-## Browser requirements
-
-> [!NOTE]
-> LLM inference speed depends on the host machine, and processing 32 frames depends on the camera’s FPS.
-
-Any modern browser with WebRTC support: Chrome, Firefox, Safari, Edge. Camera permission required. Works on desktop and mobile.
+- Model, labels, preprocessing and downloads: https://github.com/hukenovs/slovo
+- Dataset paper: https://arxiv.org/abs/2305.14527
+- Upstream license: https://github.com/hukenovs/slovo/tree/main/license

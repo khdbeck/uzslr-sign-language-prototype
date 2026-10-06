@@ -1,21 +1,9 @@
-const BUFFER_SIZE = 32;
-const CONFIDENCE_THRESHOLD = 0.45;
+let BUFFER_SIZE = 32;
+let CONFIDENCE_THRESHOLD = 0.1;
+let SAMPLE_FPS = 15;
 const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/infer`;
 
-const N_FACE = 468;
-const N_POSE = 33;
-const N_HAND = 21;
-const HAND_CONNECTIONS_LIST = [
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  [5, 9], [9, 10], [10, 11], [11, 12],
-  [9, 13], [13, 14], [14, 15], [15, 16],
-  [13, 17], [17, 18], [18, 19], [19, 20], [0, 17]
-];
-
 const video = document.getElementById('video');
-const overlay = document.getElementById('overlay');
-const context = overlay.getContext('2d');
 const cameraWrapper = document.getElementById('cameraWrapper');
 const cameraEmpty = document.getElementById('cameraEmpty');
 const statusDot = document.getElementById('statusDot');
@@ -24,6 +12,7 @@ const bufferBar = document.getElementById('bufferBar');
 const predictionIdle = document.getElementById('predictionIdle');
 const predictionResult = document.getElementById('predictionResult');
 const predLabel = document.getElementById('predLabel');
+const resultKicker = document.getElementById('resultKicker');
 const confBar = document.getElementById('confBar');
 const confPct = document.getElementById('confPct');
 const viewSignLink = document.getElementById('viewSignLink');
@@ -42,12 +31,20 @@ const replyStatus = document.getElementById('replyStatus');
 let socket;
 let socketReady = false;
 let waitingForResponse = false;
-let gestureLocked = false;
 let latestSign = null;
 let currentVideoUrl = null;
 let reconnectTimer = null;
 const history = [];
 const replySigns = [];
+let cameraStream = null;
+let clipTesting = false;
+let captureTimer = null;
+const captureCanvas = document.createElement('canvas');
+const captureContext = captureCanvas.getContext('2d');
+const videoFile = document.getElementById('videoFile');
+const videoTestStatus = document.getElementById('videoTestStatus');
+const resumeCameraBtn = document.getElementById('resumeCameraBtn');
+const top5List = document.getElementById('top5List');
 
 function setStatus(message, state = 'connecting') {
   statusText.textContent = message;
@@ -61,35 +58,23 @@ function connectSocket() {
   socket.addEventListener('open', () => {
     socketReady = true;
     waitingForResponse = false;
-    setStatus("Kamera tayyor — ikkala qo'lingizni ko'rsating", 'ready');
+    setStatus('Slovo tayyor — ishorani kameraga ko‘rsating', 'ready');
   });
 
   socket.addEventListener('message', (event) => {
     waitingForResponse = false;
     const data = JSON.parse(event.data);
+    if (clipTesting) return;
+    if (data.error) {
+      setStatus(data.error, 'error');
+      return;
+    }
     const progress = data.bufferFull ? 100 : Math.min(100, (data.bufferSize / BUFFER_SIZE) * 100);
     bufferBar.style.width = `${progress}%`;
 
-    if (!data.handsVisible) {
-      gestureLocked = false;
-      cameraWrapper.classList.remove('tracking');
-      setStatus("Ikkala qo'lingizni kadrda ko'rsating", 'ready');
-      return;
-    }
-
     cameraWrapper.classList.add('tracking');
     setStatus(data.bufferFull ? 'Ishora tahlil qilinmoqda…' : 'Harakat yozib olinmoqda…', 'active');
-
-    if (!data.prediction || gestureLocked) return;
-    gestureLocked = true;
-    const confidence = Number(data.confidence || 0);
-
-    if (confidence < CONFIDENCE_THRESHOLD) {
-      showUncertainResult(confidence);
-      return;
-    }
-
-    showPrediction(data.prediction, confidence);
+    if (data.bufferFull) displayResult(data);
   });
 
   socket.addEventListener('close', () => {
@@ -104,22 +89,24 @@ function connectSocket() {
   });
 }
 
-function showPrediction(sign, confidence) {
-  latestSign = sign;
-  const label = window.isoraSignLabel(sign);
+function showPrediction(sign, confidence, noEvent = false) {
+  latestSign = noEvent ? null : sign;
+  const label = noEvent ? 'Ishora yo‘q' : window.isoraSignLabel(sign);
   const percent = Math.round(confidence * 100);
 
   predictionIdle.classList.add('hidden');
   predictionResult.classList.remove('hidden');
   predictionResult.classList.remove('uncertain');
   predLabel.textContent = label;
+  resultKicker.textContent = 'Eng ehtimolli natija';
   confPct.textContent = `${percent}%`;
   confBar.style.width = `${percent}%`;
-  viewSignLink.href = `signs.html#${encodeURIComponent(sign)}`;
-  confirmBtn.disabled = false;
+  viewSignLink.href = noEvent ? 'slovo.html' : `slovo.html#${encodeURIComponent(sign)}`;
+  viewSignLink.textContent = 'Ishoralar lug‘atida ko‘rish';
+  confirmBtn.disabled = noEvent;
   confirmStatus.textContent = '';
 
-  if (history[0]?.sign !== sign) {
+  if (!noEvent && history[0]?.sign !== sign) {
     history.unshift({ sign, label, confidence: percent });
     if (history.length > 6) history.pop();
     renderHistory();
@@ -133,10 +120,12 @@ function showUncertainResult(confidence) {
   predictionResult.classList.remove('hidden');
   predictionResult.classList.add('uncertain');
   predLabel.textContent = "Ishorani aniqlab bo'lmadi";
+  resultKicker.textContent = 'Noaniq natija';
   confPct.textContent = `${percent}%`;
   confBar.style.width = `${percent}%`;
-  viewSignLink.href = 'signs.html';
+  viewSignLink.href = 'slovo.html';
   confirmBtn.disabled = true;
+  confirmStatus.textContent = '';
 }
 
 function renderHistory() {
@@ -163,6 +152,8 @@ clearBtn.addEventListener('click', () => {
   predictionIdle.classList.remove('hidden');
   confirmBtn.disabled = true;
   confirmStatus.textContent = '';
+  top5List.replaceChildren();
+  if (socketReady) socket.send('reset');
 });
 
 confirmBtn.addEventListener('click', () => {
@@ -170,108 +161,100 @@ confirmBtn.addEventListener('click', () => {
   confirmStatus.textContent = `«${window.isoraSignLabel(latestSign)}» tarjimasi tasdiqlandi`;
 });
 
-function buildLandmarkVector(results) {
-  const vector = new Float32Array((N_FACE * 3) + (N_POSE * 4) + (N_HAND * 3 * 2));
-  let offset = 0;
-
-  const append = (landmarks, count, dimensions) => {
-    for (let index = 0; index < count; index += 1) {
-      const point = landmarks?.[index];
-      if (point) {
-        vector[offset] = point.x || 0;
-        vector[offset + 1] = point.y || 0;
-        vector[offset + 2] = point.z || 0;
-        if (dimensions === 4) vector[offset + 3] = point.visibility ?? 0;
-      }
-      offset += dimensions;
-    }
-  };
-
-  append(results.faceLandmarks, N_FACE, 3);
-  append(results.poseLandmarks, N_POSE, 4);
-  append(results.rightHandLandmarks, N_HAND, 3);
-  append(results.leftHandLandmarks, N_HAND, 3);
-  return Array.from(vector);
-}
-
-function drawHand(landmarks, color) {
-  if (!landmarks) return;
-  context.strokeStyle = color;
-  context.fillStyle = '#ffc43d';
-  context.lineWidth = 3;
-  context.lineCap = 'round';
-
-  HAND_CONNECTIONS_LIST.forEach(([start, end]) => {
-    context.beginPath();
-    context.moveTo(landmarks[start].x * overlay.width, landmarks[start].y * overlay.height);
-    context.lineTo(landmarks[end].x * overlay.width, landmarks[end].y * overlay.height);
-    context.stroke();
-  });
-
-  landmarks.forEach((point) => {
-    context.beginPath();
-    context.arc(point.x * overlay.width, point.y * overlay.height, 3.5, 0, Math.PI * 2);
-    context.fill();
-  });
-}
-
-function onHolisticResults(results) {
-  const width = video.videoWidth || 640;
-  const height = video.videoHeight || 480;
-  if (overlay.width !== width || overlay.height !== height) {
-    overlay.width = width;
-    overlay.height = height;
+function displayResult(data) {
+  const confidence = Number(data.confidence || 0);
+  top5List.replaceChildren();
+  for (const candidate of data.top5 || []) {
+    const item = document.createElement('li');
+    const label = candidate.label === '---' ? 'Ishora yo‘q' : candidate.label;
+    item.textContent = `${label} — ${(candidate.confidence * 100).toFixed(1)}%`;
+    top5List.append(item);
   }
+  if (!data.noEvent && confidence < CONFIDENCE_THRESHOLD) {
+    showUncertainResult(confidence);
+  } else {
+    showPrediction(data.prediction, confidence, data.noEvent);
+  }
+}
 
-  context.clearRect(0, 0, overlay.width, overlay.height);
-  drawHand(results.leftHandLandmarks, '#ffffff');
-  drawHand(results.rightHandLandmarks, '#ffffff');
-
-  if (!socketReady || waitingForResponse) return;
-  const hasBothHands = Boolean(results.leftHandLandmarks && results.rightHandLandmarks);
+function captureFrame() {
+  if (!cameraStream || clipTesting || !socketReady || waitingForResponse || video.readyState < 2) return;
+  const ratio = Math.min(1, 640 / video.videoWidth);
+  captureCanvas.width = Math.round(video.videoWidth * ratio);
+  captureCanvas.height = Math.round(video.videoHeight * ratio);
+  // CSS mirrors the preview only. Model receives the original camera orientation.
+  captureContext.drawImage(video, 0, 0, captureCanvas.width, captureCanvas.height);
   waitingForResponse = true;
-  socket.send(JSON.stringify({
-    landmarks: buildLandmarkVector(results),
-    hasBothHands
-  }));
+  captureCanvas.toBlob((blob) => {
+    if (!blob || clipTesting || !socketReady || socket.readyState !== WebSocket.OPEN) {
+      waitingForResponse = false;
+      return;
+    }
+    socket.send(blob);
+  }, 'image/jpeg', 0.85);
 }
 
 async function startCamera() {
-  if (!window.Holistic || !window.Camera) {
-    cameraEmpty.querySelector('strong').textContent = 'Kamera moduli yuklanmadi';
-    cameraEmpty.querySelector('span').textContent = 'Internet aloqasini tekshiring va sahifani yangilang';
-    setStatus('MediaPipe yuklanmadi', 'error');
-    return;
-  }
-
   try {
-    const holistic = new Holistic({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+      audio: false
     });
-    holistic.setOptions({
-      modelComplexity: 0,
-      smoothLandmarks: true,
-      enableSegmentation: false,
-      refineFaceLandmarks: false,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-    holistic.onResults(onHolisticResults);
-
-    const camera = new Camera(video, {
-      onFrame: async () => holistic.send({ image: video }),
-      width: 640,
-      height: 480
-    });
-    await camera.start();
+    video.srcObject = cameraStream;
+    await video.play();
     cameraEmpty.classList.add('hidden');
+    window.clearInterval(captureTimer);
+    captureTimer = window.setInterval(captureFrame, 1000 / SAMPLE_FPS);
   } catch (error) {
     cameraEmpty.classList.remove('hidden');
     cameraEmpty.querySelector('strong').textContent = 'Kamera mavjud emas';
-    cameraEmpty.querySelector('span').textContent = 'Brauzer sozlamalarida kameraga ruxsat bering va sahifani yangilang';
+    cameraEmpty.querySelector('span').textContent = 'Kameraga ruxsat bering yoki pastdan video yuklang';
     setStatus("Kameraga ruxsat yo'q", 'error');
   }
 }
+
+videoFile.addEventListener('change', async () => {
+  const file = videoFile.files[0];
+  if (!file) return;
+  if (file.size > 50 * 1024 * 1024) {
+    videoTestStatus.textContent = 'Video 50 MB dan kichik bo‘lishi kerak';
+    return;
+  }
+  clipTesting = true;
+  resumeCameraBtn.classList.remove('hidden');
+  videoFile.disabled = true;
+  videoTestStatus.textContent = 'Video tahlil qilinmoqda…';
+  setStatus('Video tekshiruvi — kamera tahlili to‘xtatilgan', 'ready');
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const response = await fetch('/api/infer-video', { method: 'POST', body: form });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || 'Video tekshiruvi bajarilmadi');
+    displayResult(result);
+    videoTestStatus.textContent = `${file.name}: ${result.noEvent ? 'ishora yo‘q' : result.prediction} (${(result.confidence * 100).toFixed(1)}%)`;
+  } catch (error) {
+    videoTestStatus.textContent = error.message;
+  } finally {
+    videoFile.disabled = false;
+    videoFile.value = '';
+  }
+});
+
+resumeCameraBtn.addEventListener('click', () => {
+  clipTesting = false;
+  resumeCameraBtn.classList.add('hidden');
+  videoTestStatus.textContent = '';
+  if (socketReady) socket.send('reset');
+  if (!cameraStream) startCamera();
+});
+
+window.addEventListener('pagehide', () => {
+  window.clearInterval(captureTimer);
+  window.clearTimeout(reconnectTimer);
+  cameraStream?.getTracks().forEach((track) => track.stop());
+  socket?.close();
+});
 
 function renderReplySequence() {
   if (!replySigns.length) {
@@ -346,5 +329,18 @@ generateReplyBtn.addEventListener('click', async () => {
   }
 });
 
-connectSocket();
-startCamera();
+async function initializeRecognition() {
+  try {
+    const response = await fetch('/api/config');
+    if (!response.ok) throw new Error('Tanib olish tizimi yuklanmadi');
+    const config = await response.json();
+    BUFFER_SIZE = config.bufferSize;
+    SAMPLE_FPS = config.sampleFps;
+    CONFIDENCE_THRESHOLD = config.confidenceThreshold;
+    connectSocket();
+    await startCamera();
+  } catch (error) {
+    setStatus(error.message, 'error');
+  }
+}
+initializeRecognition();

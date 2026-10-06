@@ -1,7 +1,2 @@
-# for local web hosting
-# web framework
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
-websockets==14.1
-python-multipart==0.0.12
+-r requirements-slovo.txt
 httpx==0.27.2

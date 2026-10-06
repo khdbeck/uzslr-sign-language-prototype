@@ -233,3 +233,16 @@ dwpose_weights.zip
 
 # Local browser QA artifacts
 .playwright-cli/
+web_app/models/slovo/*.onnx
+web_app/models/slovo/*.part
+
+# Slovo 50-word fine-tune: data, frame cache, weights, logs, training env
+.venv-train/
+training/slovo50/cache/
+training/slovo50/logs/
+training/slovo50/*.pt
+web_app/models/slovo/pt/
+training/slovo50/ckpt/
+# Slovo example clips are dataset videos; regenerate with training/slovo50/make_examples.py
+web_app/frontend/slovo-images/
+*.log

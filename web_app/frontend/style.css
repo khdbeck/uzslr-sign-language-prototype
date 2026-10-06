@@ -1525,3 +1525,17 @@ body::before {
     transition-duration: 0.01ms !important;
   }
 }
+
+.video-test { margin-top: 1rem; display: grid; gap: 0.65rem; }
+.video-test label, .recognition-candidates { font-size: 0.85rem; color: var(--text-muted, #bcb2cc); }
+.video-test input { max-width: 100%; font: inherit; font-size: 0.8rem; }
+.video-test p { font-size: 0.85rem; overflow-wrap: anywhere; }
+.recognition-candidates { margin: 1rem 0; }
+.recognition-candidates summary { cursor: pointer; }
+.recognition-candidates ol { padding-left: 1.4rem; line-height: 1.8; }
+.slovo-search { width: 100%; padding: 1rem; margin: 1rem 0; border: 1px solid var(--border-hi); border-radius: 12px; background: #21142f; color: #fff; font: inherit; }
+.slovo-word-list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.65rem; }
+.slovo-word-list li { padding: 0.9rem 1rem; border: 1px solid var(--border-hi); border-radius: 10px; overflow-wrap: anywhere; }
+.slovo-word-list li.has-example { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.5rem 0.5rem 0.8rem; }
+.slovo-word-list li.has-example span { padding: 0 0.5rem; font-weight: 600; }
+.slovo-word-video { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 8px; background: #21142f; cursor: pointer; }

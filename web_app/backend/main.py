@@ -1,12 +1,12 @@
-import json
 import sys
 import pathlib
 import numpy as np
-import torch
-from collections import deque
+import asyncio
+import cv2
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -21,24 +21,20 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from web_app.backend.config import (
-    MAX_LEN, CHANNELS, NUM_CLASSES, MODEL_DIM,
-    BUFFER_SIZE, HAND_DISAPPEAR_TOLERANCE, DEFAULT_SIGNS, get_device,
     LLM_ENABLED, LLM_MODELS, LLM_DEFAULT_MODEL,
     LLM_HAND_ABSENT_FRAMES, DEFAULT_SYSTEM_PROMPT, ADMIN_PASSWORD,
 )
-from web_app.backend.preprocess import Preprocess
-from web_app.backend.model import SignLanguageModel
+from web_app.backend.slovo import SlovoRecognizer, preprocess_frame
 
 # absolute paths to assets
-_MODEL_PATH   = _WEBAPP_DIR / "best_model.pth"
 _SIGNS_DIR    = _REPO_ROOT  / "show-50-signs" / "signs"
 _FRONTEND_DIR = _WEBAPP_DIR / "frontend"
 
 
 # global singletons 
-device     = None
 model      = None
-preprocess = None
+_inference_lock = asyncio.Lock()
+_logger = logging.getLogger(__name__)
 
 # Active system prompt — starts as default, admin can change at runtime.
 # Resets to DEFAULT_SYSTEM_PROMPT on every server restart (by design).
@@ -51,24 +47,11 @@ _admin_tokens: set = set()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global device, model, preprocess
+    global model
 
     # sign recognition model 
-    device = get_device()
-    print(f"[startup] using device: {device}")
-
-    model = SignLanguageModel(
-        max_len=MAX_LEN, channels=CHANNELS,
-        num_classes=NUM_CLASSES, dim=MODEL_DIM,
-    )
-    model.load_state_dict(
-        torch.load(str(_MODEL_PATH), map_location=device, weights_only=True)
-    )
-    model.to(device)
-    model.eval()
-    print(f"[startup] sign model loaded from {_MODEL_PATH}")
-
-    preprocess = Preprocess(max_len=MAX_LEN).to(device)
+    model = await asyncio.to_thread(SlovoRecognizer)
+    print(f"[startup] Slovo loaded: {model.name}, {model.no_event_id} signs + no_event ({model.provider})")
 
     # ollama (only in LLM image)
     if LLM_ENABLED:
@@ -106,7 +89,54 @@ async def get_config():
         "llmHandAbsentFrames": LLM_HAND_ABSENT_FRAMES,
         "defaultSystemPrompt": DEFAULT_SYSTEM_PROMPT,
         "activePrompt":        _active_prompt,
+        "recognitionModel": "slovo",
+        "recognitionVariant": model.name,
+        "recognitionLanguage": "rsl",
+        "classCount": len(model.labels),
+        "signCount": model.no_event_id,
+        "bufferSize": model.frame_count,
+        "sampleFps": model.sample_fps,
+        "inputType": "jpeg",
+        "executionProvider": model.provider,
+        "confidenceThreshold": 0.1,
     })
+
+
+@app.get("/api/recognition-signs")
+async def recognition_signs():
+    # Optional example clip + poster per sign: frontend/slovo-images/<variant>/<index>.{mp4,jpg}
+    folder = _FRONTEND_DIR / "slovo-images" / model.name
+    examples = [
+        {"video": f"slovo-images/{model.name}/{i}.mp4", "poster": f"slovo-images/{model.name}/{i}.jpg"}
+        if (folder / f"{i}.mp4").is_file() else None
+        for i in range(model.no_event_id)
+    ]
+    return {"model": "slovo", "signs": model.labels[:-1], "examples": examples,
+            "noEventClassId": model.no_event_id}
+
+
+@app.post("/api/infer-video")
+async def infer_video(file: UploadFile):
+    """Test the same recognizer on a local clip; do not retain uploaded video."""
+    if file.filename is None or pathlib.Path(file.filename).suffix.lower() not in {".mp4", ".webm", ".mov", ".avi"}:
+        raise HTTPException(400, "Upload MP4, WebM, MOV or AVI")
+    with _tempfile.TemporaryDirectory() as directory:
+        target = pathlib.Path(directory) / ("clip" + pathlib.Path(file.filename).suffix.lower())
+        size = 0
+        try:
+            with target.open("wb") as output:
+                while chunk := await file.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > 50 * 1024 * 1024:
+                        raise HTTPException(413, "Video must be smaller than 50 MB")
+                    output.write(chunk)
+            async with _inference_lock:
+                result = await asyncio.to_thread(model.predict_video, target)
+            return {**result, "model": "slovo"}
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        finally:
+            await file.close()
 
 
 # REST: admin endpoints 
@@ -176,73 +206,46 @@ async def form_sentence_endpoint(req: SentenceRequest):
 async def websocket_infer(ws: WebSocket):
     await ws.accept()
 
-    frame_buffer           = []          # plain list — we control clearing manually
-    hand_disappear_counter = 0
-    hands_were_visible     = False       # latched: were hands visible last cycle?
+    frame_buffer = []
 
     try:
         while True:
-            raw = await ws.receive_text()
-            msg = json.loads(raw)
-
-            landmarks:      list = msg["landmarks"]
-            has_both_hands: bool = msg["hasBothHands"]
-
-            vec = np.array(landmarks, dtype=np.float32)
-
-            # hand tracking 
-            if has_both_hands:
-                hand_disappear_counter = 0
-                if not hands_were_visible:
-                    # hands just appeared — start a fresh buffer for a new sign
-                    frame_buffer       = []
-                    hands_were_visible = True
-            else:
-                if hands_were_visible:
-                    hand_disappear_counter += 1
-                    if hand_disappear_counter > HAND_DISAPPEAR_TOLERANCE:
-                        hands_were_visible = False
-                        frame_buffer       = []
-
-            # buffer & predict 
-            prediction = None
-            confidence = None
-            buffer_full = False
-
-            if hands_were_visible and len(frame_buffer) < BUFFER_SIZE:
-                frame_buffer.append(vec)
-
-            if hands_were_visible and len(frame_buffer) == BUFFER_SIZE:
-                buffer_full = True
-                frames = np.stack(frame_buffer)
-                x      = torch.from_numpy(frames).to(device)
-                x      = preprocess(x)
-                x      = x.unsqueeze(0)
-                mask   = torch.ones(1, MAX_LEN, dtype=torch.bool, device=device)
-
-                with torch.no_grad():
-                    logits               = model(x, mask)
-                    probs                = torch.softmax(logits, dim=-1)
-                    conf, pred_idx       = torch.max(probs, dim=-1)
-
-                prediction = DEFAULT_SIGNS[pred_idx.item()]
-                confidence = round(conf.item(), 3)
-
-                # clear buffer so next sign gets a fresh 32 frames
-                frame_buffer = []
-
-            response = {
-                "handsVisible":  hands_were_visible,
-                "bufferSize":    len(frame_buffer),
-                "bufferFull":    buffer_full,        # client uses this to reset bar
-                "prediction":    prediction,
-                "confidence":    confidence,
-            }
-
-            await ws.send_text(json.dumps(response))
+            message = await ws.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+            if message.get("text"):
+                if message["text"] == "reset":
+                    frame_buffer.clear()
+                    await ws.send_json({"bufferSize": 0, "bufferFull": False})
+                else:
+                    await ws.send_json({"error": "Slovo expects binary JPEG frames"})
+                continue
+            payload = message.get("bytes")
+            if not payload or len(payload) > 512 * 1024:
+                await ws.send_json({"error": "Invalid frame size"})
+                continue
+            frame = cv2.imdecode(np.frombuffer(payload, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if frame is None or max(frame.shape[:2]) > 2048:
+                await ws.send_json({"error": "Invalid JPEG frame"})
+                continue
+            frame_buffer.append(preprocess_frame(frame))
+            response = {"bufferSize": len(frame_buffer), "bufferFull": False,
+                        "prediction": None, "model": "slovo"}
+            if len(frame_buffer) == model.frame_count:
+                async with _inference_lock:
+                    result = await asyncio.to_thread(model.predict, list(frame_buffer))
+                response.update(result)
+                response["bufferFull"] = True
+                # Start a fresh clip after inference so slow CPUs cannot mix
+                # frames captured before and after a several-second pause.
+                frame_buffer.clear()
+            await ws.send_json(response)
 
     except WebSocketDisconnect:
         pass
+    except Exception:
+        _logger.exception("Slovo WebSocket inference failed")
+        await ws.close(code=1011, reason="Recognition failed; reconnect to retry")
 
 
 # REST: sign video production

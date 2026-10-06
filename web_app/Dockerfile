@@ -1,13 +1,13 @@
 # base image
-# Python 3.9 — matches conda env exactly (python=3.9.23)
-# slim variant keeps image lean; we add only what mediapipe + OpenCV need
-FROM python:3.9-slim
+# Python 3.12 supports the current ONNX Runtime package.
+# The slim image includes only the native libraries needed by OpenCV and FFmpeg.
+FROM python:3.12-slim
 
 # system dependencies 
-# libglib2.0-0  -> mediapipe runtime
+# libglib2.0-0  -> OpenCV runtime
 # libgl1        -> OpenCV (even headless build links against it)
-# libgomp1      -> PyTorch CPU thread parallelism (OpenMP)
-# libgcc-s1     -> mediapipe native libs
+# libgomp1      -> CPU thread parallelism (OpenMP)
+# libgcc-s1     -> native runtime libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
         libgl1 \
@@ -23,6 +23,7 @@ WORKDIR /app
 # Copy requirements first so Docker layer-caches this step.
 # Only re-runs when requirements.txt changes, not on every code change.
 COPY web_app/requirements-docker.txt /app/requirements.txt
+COPY web_app/requirements-slovo.txt /app/requirements-slovo.txt
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
@@ -37,8 +38,8 @@ RUN touch /app/web_app/backend/__init__.py
 # frontend static files
 COPY web_app/frontend/  /app/web_app/frontend/
 
-# model weights (6.7 MB)
-COPY web_app/best_model.pth /app/web_app/best_model.pth
+# official Slovo ONNX weights + ordered class map (run setup_slovo first)
+COPY web_app/models/slovo/ /app/web_app/models/slovo/
 
 # pre-rendered sign videos
 COPY web_app/sign_videos/       /app/web_app/sign_videos/

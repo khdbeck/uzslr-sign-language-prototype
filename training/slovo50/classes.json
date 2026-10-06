@@ -1,0 +1,257 @@
+[
+  {
+    "slovoId": 424,
+    "label": "есть",
+    "zipf": 6.19
+  },
+  {
+    "slovoId": 474,
+    "label": "Пока",
+    "zipf": 5.83
+  },
+  {
+    "slovoId": 500,
+    "label": "сказать",
+    "zipf": 5.48
+  },
+  {
+    "slovoId": 519,
+    "label": "потом",
+    "zipf": 5.71
+  },
+  {
+    "slovoId": 524,
+    "label": "там",
+    "zipf": 5.96
+  },
+  {
+    "slovoId": 526,
+    "label": "часть",
+    "zipf": 5.55
+  },
+  {
+    "slovoId": 528,
+    "label": "дом",
+    "zipf": 5.51
+  },
+  {
+    "slovoId": 529,
+    "label": "новости",
+    "zipf": 5.39
+  },
+  {
+    "slovoId": 531,
+    "label": "еще",
+    "zipf": 6.29
+  },
+  {
+    "slovoId": 540,
+    "label": "хорошо",
+    "zipf": 5.71
+  },
+  {
+    "slovoId": 565,
+    "label": "должен",
+    "zipf": 5.54
+  },
+  {
+    "slovoId": 566,
+    "label": "почему",
+    "zipf": 5.85
+  },
+  {
+    "slovoId": 568,
+    "label": "мир",
+    "zipf": 5.38
+  },
+  {
+    "slovoId": 580,
+    "label": "человек",
+    "zipf": 5.96
+  },
+  {
+    "slovoId": 584,
+    "label": "всегда",
+    "zipf": 5.8
+  },
+  {
+    "slovoId": 607,
+    "label": "очень",
+    "zipf": 6.14
+  },
+  {
+    "slovoId": 608,
+    "label": "место",
+    "zipf": 5.71
+  },
+  {
+    "slovoId": 616,
+    "label": "много",
+    "zipf": 5.75
+  },
+  {
+    "slovoId": 617,
+    "label": "второй",
+    "zipf": 5.45
+  },
+  {
+    "slovoId": 621,
+    "label": "два",
+    "zipf": 5.76
+  },
+  {
+    "slovoId": 630,
+    "label": "друг",
+    "zipf": 5.47
+  },
+  {
+    "slovoId": 631,
+    "label": "назад",
+    "zipf": 5.48
+  },
+  {
+    "slovoId": 634,
+    "label": "уже",
+    "zipf": 6.31
+  },
+  {
+    "slovoId": 653,
+    "label": "сегодня",
+    "zipf": 5.91
+  },
+  {
+    "slovoId": 666,
+    "label": "несколько",
+    "zipf": 5.73
+  },
+  {
+    "slovoId": 669,
+    "label": "только",
+    "zipf": 6.36
+  },
+  {
+    "slovoId": 698,
+    "label": "делать",
+    "zipf": 5.54
+  },
+  {
+    "slovoId": 702,
+    "label": "жизнь",
+    "zipf": 5.73
+  },
+  {
+    "slovoId": 707,
+    "label": "три",
+    "zipf": 5.65
+  },
+  {
+    "slovoId": 708,
+    "label": "вопрос",
+    "zipf": 5.57
+  },
+  {
+    "slovoId": 709,
+    "label": "ничего",
+    "zipf": 5.75
+  },
+  {
+    "slovoId": 724,
+    "label": "здесь",
+    "zipf": 5.78
+  },
+  {
+    "slovoId": 730,
+    "label": "первый",
+    "zipf": 5.63
+  },
+  {
+    "slovoId": 741,
+    "label": "лучше",
+    "zipf": 5.67
+  },
+  {
+    "slovoId": 744,
+    "label": "деньги",
+    "zipf": 5.57
+  },
+  {
+    "slovoId": 749,
+    "label": "никогда",
+    "zipf": 5.59
+  },
+  {
+    "slovoId": 751,
+    "label": "год",
+    "zipf": 5.76
+  },
+  {
+    "slovoId": 752,
+    "label": "новый",
+    "zipf": 5.57
+  },
+  {
+    "slovoId": 755,
+    "label": "время",
+    "zipf": 6.21
+  },
+  {
+    "slovoId": 758,
+    "label": "иногда",
+    "zipf": 5.37
+  },
+  {
+    "slovoId": 790,
+    "label": "Сразу",
+    "zipf": 5.46
+  },
+  {
+    "slovoId": 823,
+    "label": "тогда",
+    "zipf": 5.73
+  },
+  {
+    "slovoId": 831,
+    "label": "теперь",
+    "zipf": 5.92
+  },
+  {
+    "slovoId": 840,
+    "label": "сколько",
+    "zipf": 5.5
+  },
+  {
+    "slovoId": 844,
+    "label": "слишком",
+    "zipf": 5.38
+  },
+  {
+    "slovoId": 883,
+    "label": "найти",
+    "zipf": 5.38
+  },
+  {
+    "slovoId": 900,
+    "label": "да",
+    "zipf": 6.04
+  },
+  {
+    "slovoId": 905,
+    "label": "быть",
+    "zipf": 6.08
+  },
+  {
+    "slovoId": 917,
+    "label": "больше",
+    "zipf": 6.01
+  },
+  {
+    "slovoId": 931,
+    "label": "день",
+    "zipf": 5.84
+  },
+  {
+    "slovoId": 1000,
+    "label": "---",
+    "zipf": null
+  }
+]
